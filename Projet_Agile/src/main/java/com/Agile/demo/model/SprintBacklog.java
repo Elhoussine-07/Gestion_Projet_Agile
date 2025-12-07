@@ -169,16 +169,23 @@ public class SprintBacklog extends AbstractBacklog {
     }
 
     @Override
-    public void addItem(IBacklogItem item) {
+    public void addItem(AbstractWorkItem item) {
         if (item instanceof UserStory) {
             addUserStory((UserStory) item);
         } else if (item instanceof Task) {
             addTask((Task) item);
+        } else {
+            throw new IllegalArgumentException("Type non supporté: " + item.getClass().getSimpleName());
         }
     }
 
+    /**
+     * Retire un item du sprint backlog
+     *
+     * @param item L'item à retirer
+     */
     @Override
-    public void removeItem(IBacklogItem item) {
+    public void removeItem(AbstractWorkItem item) {
         if (item instanceof UserStory) {
             removeUserStory((UserStory) item);
         } else if (item instanceof Task) {
@@ -186,9 +193,14 @@ public class SprintBacklog extends AbstractBacklog {
         }
     }
 
+    /**
+     * Retourne tous les items (UserStories + Tasks) du sprint
+     *
+     * @return Liste de tous les AbstractWorkItem
+     */
     @Override
-    public List<IBacklogItem> getItems() {
-        List<IBacklogItem> items = new ArrayList<>();
+    public List<AbstractWorkItem> getItems() {
+        List<AbstractWorkItem> items = new ArrayList<>();
         items.addAll(userStories);
         items.addAll(tasks);
         return items;
