@@ -28,8 +28,12 @@ public class Epic {
     @Column(length = 1000)
     private String description;
 
-    @OneToMany(mappedBy = "epic", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "epic", cascade = CascadeType.ALL)
     private List<UserStory> userStories = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_backlog_id")
+    private ProductBacklog productBacklog;
 
     public Epic(String name, String title, String description) {
         this.name = name;

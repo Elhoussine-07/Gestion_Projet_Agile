@@ -1,4 +1,4 @@
-package model;
+package com.Agile.demo.model;
 
 public enum MoSCoW {
     MUST_HAVE,

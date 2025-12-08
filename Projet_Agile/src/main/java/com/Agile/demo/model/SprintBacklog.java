@@ -12,8 +12,6 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Table(name = "sprint_backlogs")
 public class SprintBacklog extends AbstractBacklog {
 
@@ -58,7 +56,6 @@ public class SprintBacklog extends AbstractBacklog {
         this.startDate = startDate;
         this.endDate = endDate;
         this.goal = goal;
-        this.sprintStatus = SprintStatus.PLANNED;
         this.userStories = new ArrayList<>();
         this.tasks = new ArrayList<>();
     }
@@ -110,7 +107,7 @@ public class SprintBacklog extends AbstractBacklog {
      */
     public int calculateVelocity() {
         return userStories.stream()
-                .filter(us -> us.getStatus() == Status.DONE)
+                .filter(us -> us.getStatus() == WorkItemStatus.DONE)
                 .mapToInt(UserStory::getStoryPoints)
                 .sum();
     }
@@ -123,7 +120,7 @@ public class SprintBacklog extends AbstractBacklog {
             return 0.0;
         }
         long completedStories = userStories.stream()
-                .filter(us -> us.getStatus() == Status.DONE)
+                .filter(us -> us.getStatus() == WorkItemStatus.DONE)
                 .count();
         return (completedStories * 100.0) / userStories.size();
     }
@@ -142,7 +139,7 @@ public class SprintBacklog extends AbstractBacklog {
      */
     public int getRemainingStoryPoints() {
         return userStories.stream()
-                .filter(us -> us.getStatus() != Status.DONE)
+                .filter(us -> us.getStatus() != WorkItemStatus.DONE)
                 .mapToInt(UserStory::getStoryPoints)
                 .sum();
     }
@@ -184,7 +181,7 @@ public class SprintBacklog extends AbstractBacklog {
      *
      * @param item L'item à retirer
      */
-    @Override
+
     public void removeItem(AbstractWorkItem item) {
         if (item instanceof UserStory) {
             removeUserStory((UserStory) item);
