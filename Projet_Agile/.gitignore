@@ -1,0 +1,9 @@
+# IntelliJ IDEA project files
+.idea/
+*.iml
+
+# Compiled classes
+target/
+
+# Logs
+*.log
