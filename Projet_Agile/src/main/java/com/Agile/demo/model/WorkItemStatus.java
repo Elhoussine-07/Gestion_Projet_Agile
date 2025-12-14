@@ -1,4 +1,4 @@
-package com.Agile.demo.model;
+package com.agile.demo.model;
 
 /**
  * Statuts possibles d'un élément de travail (UserStory ou Task)

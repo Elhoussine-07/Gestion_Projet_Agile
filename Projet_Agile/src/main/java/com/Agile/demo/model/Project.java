@@ -1,4 +1,4 @@
-package com.Agile.demo.model;
+package com.agile.demo.model;
 
 import lombok.Getter;
 import lombok.Setter;

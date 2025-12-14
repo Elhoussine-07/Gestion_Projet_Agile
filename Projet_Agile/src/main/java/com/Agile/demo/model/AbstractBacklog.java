@@ -1,4 +1,4 @@
-package com.Agile.demo.model;
+package com.agile.demo.model;
 
 import com.Agile.demo.model.AbstractWorkItem;
 import jakarta.persistence.MappedSuperclass;

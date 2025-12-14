@@ -1,4 +1,7 @@
-package com.Agile.demo.model;
+package com.agile.demo.planning.prioritization;
+
+import com.agile.demo.model.IPrioritizationStrategy;
+import com.agile.demo.model.UserStory;
 
 public class ValueEffortStrategy implements IPrioritizationStrategy {
     @Override

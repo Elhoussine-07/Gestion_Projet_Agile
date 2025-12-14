@@ -1,7 +1,7 @@
-package com.Agile.demo.model;
+package com.agile.demo.planning.prioritization;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import com.agile.demo.model.IPrioritizationStrategy;
+import com.agile.demo.model.UserStory;
 
 public class MoSCowStrategy implements IPrioritizationStrategy {
     @Override
