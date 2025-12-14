@@ -1,4 +1,4 @@
-package com.Agile.demo.model;
+package com.agile.demo.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,7 +25,6 @@ public class UserStoryDescription {
 
     @Column(name = "purpose", nullable = false, length = 1000)
     private String purpose;
-
 
     @Override
     public String toString() {

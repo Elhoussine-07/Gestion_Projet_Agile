@@ -1,4 +1,4 @@
-package com.Agile.demo.model;
+package com.agile.demo.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -212,25 +212,6 @@ public class Task extends AbstractWorkItem {
             return 100;
         }
         return (int) calculateHoursProgress();
-    }
-
-    // ===== MÉTHODES POUR L'ESTIMATION =====
-
-    public int getEstimatedHours() {
-        return this.estimatedHours;
-    }
-
-    public void setEstimatedHours(int hours) {
-        if (hours < 0) {
-            throw new IllegalArgumentException("Les heures estimées ne peuvent pas être négatives");
-        }
-        this.estimatedHours = hours;
-    }
-
-    public int getStoryPoints() {
-        // Les tâches n'ont généralement pas de story points
-        // Elles sont estimées en heures
-        return 0;
     }
 
     // ===== MÉTHODES STANDARD =====
