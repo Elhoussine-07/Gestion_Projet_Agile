@@ -140,6 +140,14 @@ public class UserStory extends AbstractWorkItem {
         this.dependencies = new ArrayList<>();
     }
 
+    @Override
+    public String getDescription() {
+        return ""; // ou ce que tu veux retourner
+    }
+
+
+
+
     /**
      * Constructeur complet pour les tests ou migrations
      */

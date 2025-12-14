@@ -9,6 +9,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Getter
 @Setter
@@ -16,6 +18,8 @@ import java.util.List;
 public class SprintBacklog extends AbstractBacklog {
 
     @Column(nullable = false)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer sprintNumber;
 
     @Column(nullable = false)
@@ -202,4 +206,9 @@ public class SprintBacklog extends AbstractBacklog {
         items.addAll(tasks);
         return items;
     }
+
+    public void setsprintNumber(long l) {
+        this.sprintNumber = Math.toIntExact(l);
+    }
+
 }
