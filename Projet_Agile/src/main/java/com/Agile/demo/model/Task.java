@@ -14,6 +14,8 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class Task extends AbstractWorkItem {
 
+
+
     @Getter
     @Column(name = "description", length = 2000)
     private String description;
@@ -198,10 +200,16 @@ public class Task extends AbstractWorkItem {
      * Passe la tâche en test
      */
     public void moveToTesting() {
-        if (this.status == WorkItemStatus.IN_REVIEW) {
-            updateStatus(WorkItemStatus.TESTING);
+        if (this.status != WorkItemStatus.IN_PROGRESS &&
+                this.status != WorkItemStatus.IN_REVIEW) {
+            throw new IllegalStateException(
+                    "La tâche doit être en cours ou en revue pour passer en test"
+            );
         }
+
+        this.status = WorkItemStatus.TESTING;
     }
+
 
     // ===== IMPLÉMENTATION DES MÉTHODES ABSTRAITES =====
 
