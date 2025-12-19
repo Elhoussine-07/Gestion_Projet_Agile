@@ -1,10 +1,14 @@
 package com.Agile.demo.execution.workflow;
 
-import com.Agile.demo.execution.repositories.ProjectRepository;
 import com.Agile.demo.execution.repositories.SprintBacklogRepository;
 import com.Agile.demo.execution.repositories.TaskRepository;
-import com.Agile.demo.execution.repositories.UserStoryRepository;
-import com.Agile.demo.model.*;
+import com.Agile.demo.model.SprintBacklog;
+import com.Agile.demo.model.SprintStatus;
+import com.Agile.demo.planning.repository.ProjectRepository;
+import com.Agile.demo.planning.repository.UserStoryRepository;
+import com.Agile.demo.model.Task;
+import com.Agile.demo.model.UserStory;
+import com.Agile.demo.model.WorkItemStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -1,8 +1,12 @@
 package com.Agile.demo.execution.services;
 
-import com.Agile.demo.model.*;
 import com.Agile.demo.execution.repositories.SprintBacklogRepository;
-import com.Agile.demo.execution.repositories.ProjectRepository;
+
+import com.Agile.demo.model.Project;
+import com.Agile.demo.model.SprintBacklog;
+import com.Agile.demo.planning.repository.ProjectRepository;
+import com.Agile.demo.model.SprintStatus;
+import com.Agile.demo.model.UserStory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -19,6 +19,9 @@ public abstract class AbstractBacklog {
     }
 
     public abstract void addItem(AbstractWorkItem item);
+
+    public abstract void removeItem(AbstractWorkItem item);
+
     public abstract List<? extends AbstractWorkItem> getItems();
 
     public String getName() {

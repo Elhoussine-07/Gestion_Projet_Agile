@@ -3,7 +3,7 @@ package com.Agile.demo.execution.services;
 import com.Agile.demo.model.*;
 import com.Agile.demo.execution.repositories.TaskRepository;
 import com.Agile.demo.execution.repositories.UserRepository;
-import com.Agile.demo.execution.repositories.UserStoryRepository;
+import com.Agile.demo.planning.repository.UserStoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
