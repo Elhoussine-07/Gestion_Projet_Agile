@@ -1,15 +1,27 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
 /**
  * Statuts possibles d'un élément de travail (UserStory ou Task)
  */
 public enum WorkItemStatus {
+    
+    // Backlog & Planning
+    BACKLOG("Backlog"),
     TODO("À faire"),
+    READY("pret"),
+
+    // Active work
     IN_PROGRESS("En cours"),
     IN_REVIEW("En revue"),
     TESTING("En test"),
+
+    // Blocked / On hold
+    ON_HOLD("suspendu"),
+    BLOCKED("Bloqué"),
+
+    // Final states
     DONE("Terminé"),
-    BLOCKED("Bloqué");
+    CANCELLED("Cancelled");
 
     private final String displayName;
 
@@ -23,6 +35,14 @@ public enum WorkItemStatus {
 
     public boolean isActive() {
         return this == IN_PROGRESS || this == IN_REVIEW || this == TESTING;
+    }
+
+    public boolean isReady() {
+        return this == READY;
+    }
+
+    public boolean isBlocked() {
+        return this == BLOCKED || this == ON_HOLD;
     }
 
     public boolean isFinal() {

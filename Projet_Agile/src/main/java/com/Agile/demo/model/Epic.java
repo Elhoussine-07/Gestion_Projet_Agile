@@ -1,9 +1,7 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +11,8 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Epic {
 
     @Id
@@ -29,17 +29,14 @@ public class Epic {
     private String description;
 
     @OneToMany(mappedBy = "epic", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<UserStory> userStories = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_backlog_id")
     private ProductBacklog productBacklog;
 
-    public Epic(String name, String title, String description) {
-        this.name = name;
-        this.title = title;
-        this.description = description;
-    }
+    // Constructeur avec Builder est géré par Lombok via l'annotation @Builder
 
     public void addUserStory(UserStory story) {
         userStories.add(story);
