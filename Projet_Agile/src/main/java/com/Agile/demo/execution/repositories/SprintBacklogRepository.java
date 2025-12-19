@@ -17,7 +17,7 @@ public interface SprintBacklogRepository extends JpaRepository<SprintBacklog, Lo
     /**
      * Trouve tous les sprints d'un projet
      */
-    Optional<SprintBacklog> findBySprintNumber(Integer sprintNumber);
+    Optional<SprintBacklog> findBySprintNumber(Integer SprintNumber);
 
     // language: java
     List<SprintBacklog> findByProjectSprintNumber(Long projectId);
@@ -60,4 +60,9 @@ public interface SprintBacklogRepository extends JpaRepository<SprintBacklog, Lo
      * Compte le nombre de sprints actifs pour un projet
      */
     long countByProjectIdAndSprintStatus(Long projectId, SprintStatus status);
+
+
+    Optional<SprintBacklog> findTopByProjectIdOrderBySprintNumberDesc(Long projectId);
+    @Query("SELECT s FROM SprintBacklog s WHERE s.project.id = :projectId AND EXISTS (SELECT us FROM s.userStories us WHERE us.status != 'DONE')")
+    List<SprintBacklog> findSprintsWithIncompleteStories(@Param("projectId") Long projectId);
 }

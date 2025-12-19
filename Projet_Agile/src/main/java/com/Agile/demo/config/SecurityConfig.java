@@ -10,7 +10,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  */
 @Configuration
 public class SecurityConfig {
+    private static SecurityConfig securityConfig;
 
+    private SecurityConfig() {}
+
+    public static SecurityConfig getInstance(){
+    if(securityConfig==null){
+        securityConfig = new SecurityConfig();
+    }
+    return securityConfig;
+    }
     /**
      * Bean pour l'encodage des mots de passe
      * Utilise BCrypt qui est un algorithme de hachage sécurisé

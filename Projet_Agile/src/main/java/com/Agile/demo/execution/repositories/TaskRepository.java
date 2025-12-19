@@ -1,5 +1,6 @@
 package com.Agile.demo.execution.repositories;
-
+import java.util.List;
+import java.time.LocalDate;
 import com.Agile.demo.model.Task;
 import com.Agile.demo.model.WorkItemStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,7 +21,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     /**
      * Trouve toutes les tâches d'un Sprint Backlog
      */
-    List<Task> findBySprintBacklogId(Long sprintBacklogId);
+    List<Task> findBySprintBacklogId(Integer sprintBacklogId);
 
     /**
      * Trouve toutes les tâches assignées à un utilisateur
@@ -64,4 +65,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT t FROM Task t WHERE t.sprintBacklog.id = :sprintBacklogId AND t.actualHours > t.estimatedHours")
     List<Task> findOverEstimatedTasksBySprint(@Param("sprintBacklogId") Long sprintBacklogId);
+
+    List<Task> findBySprintBacklogIdAndIsBlockedTrue(Integer sprintBacklogId);
+    List<Task> findBySprintBacklogIdAndActualHoursGreaterThanEstimatedHours(Integer sprintBacklogId);
+    List<Task> findByAssignedUserIdAndStatusNot(Long userId, WorkItemStatus status);
+    List<Task> findBySprintBacklogIdAndStatusNot(Integer sprintBacklogId, WorkItemStatus status);
+    List<Task> findBySprintBacklogIdAndStatusAndCompletedDateAfter(Integer sprintBacklogId, WorkItemStatus status, LocalDate date);
+    List<Task> findByAssignedUserIdAndSprintBacklogId(Long userId, Long sprintBacklogId);
+
 }

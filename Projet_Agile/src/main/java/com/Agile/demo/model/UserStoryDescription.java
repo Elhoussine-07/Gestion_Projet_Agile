@@ -26,7 +26,6 @@ public class UserStoryDescription {
     @Column(name = "purpose", nullable = false, length = 1000)
     private String purpose;
 
-
     @Override
     public String toString() {
         return String.format("En tant que %s, je veux %s afin de %s",

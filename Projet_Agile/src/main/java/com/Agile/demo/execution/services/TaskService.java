@@ -3,11 +3,13 @@ package com.Agile.demo.execution.services;
 import com.Agile.demo.model.*;
 import com.Agile.demo.execution.repositories.TaskRepository;
 import com.Agile.demo.execution.repositories.UserRepository;
-import com.Agile.demo.execution.repositories.UserStoryRepository;
+import com.Agile.demo.planning.repository.UserStoryRepository;
+import com.Agile.demo.execution.repositories.SprintBacklogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -15,9 +17,11 @@ import java.util.List;
 @Transactional
 public class TaskService {
 
+
     private final TaskRepository taskRepository;
     private final UserStoryRepository userStoryRepository;
     private final UserRepository userRepository;
+    private final SprintBacklogRepository SprintBacklogRepository;
 
     /**
      * Crée une nouvelle tâche pour une User Story
@@ -79,7 +83,7 @@ public class TaskService {
      * Récupère toutes les tâches d'un sprint
      */
     @Transactional(readOnly = true)
-    public List<Task> getTasksBySprint(Long sprintBacklogId) {
+    public List<Task> getTasksBySprint(Integer sprintBacklogId) {
         return taskRepository.findBySprintBacklogId(sprintBacklogId);
     }
 
@@ -277,4 +281,218 @@ public class TaskService {
             int totalActualHours,
             double progressPercentage
     ) {}
+
+
+
+    // Méthodes à ajouter dans TaskService
+
+    /**
+     * Récupère les tâches par statut pour un sprint
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getTasksBySprintAndStatus(Long sprintBacklogId, WorkItemStatus status) {
+        return taskRepository.findBySprintBacklogIdAndStatus(sprintBacklogId, status);
+    }
+
+    /**
+     * Récupère les tâches bloquées
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getBlockedTasks(Integer sprintBacklogId) {
+        return taskRepository.findBySprintBacklogIdAndIsBlockedTrue(sprintBacklogId);
+    }
+
+    /**
+     * Marque une tâche comme bloquée
+     */
+    public Task blockTask(Long taskId, String blockReason) {
+        Task task = getTaskById(taskId);
+
+        if (task.getStatus() == WorkItemStatus.DONE) {
+            throw new IllegalStateException("Impossible de bloquer une tâche terminée");
+        }
+
+        task.setBlocked(true);
+        task.setBlockReason(blockReason);
+        return taskRepository.save(task);
+    }
+
+    /**
+     * Débloque une tâche
+     */
+    public Task unblockTask(Long taskId) {
+        Task task = getTaskById(taskId);
+        task.setBlocked(false);
+        task.setBlockReason(null);
+        return taskRepository.save(task);
+    }
+
+    /**
+     * Récupère les tâches avec heures dépassées
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getTasksExceedingEstimate(Integer sprintBacklogId) {
+        return taskRepository.findBySprintBacklogIdAndActualHoursGreaterThanEstimatedHours(sprintBacklogId);
+    }
+
+    /**
+     * Réassigne toutes les tâches d'un utilisateur à un autre
+     */
+    public void reassignUserTasks(Long fromUserId, Long toUserId) {
+        User toUser = userRepository.findById(toUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur cible non trouvé"));
+
+        List<Task> tasks = taskRepository.findByAssignedUserIdAndStatusNot(fromUserId, WorkItemStatus.DONE);
+
+        tasks.forEach(task -> {
+            task.assignTo(toUser);
+            taskRepository.save(task);
+        });
+    }
+
+    /**
+     * Récupère les tâches critiques (peu de temps restant)
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getCriticalTasks(Integer SprintNumber) {
+
+        SprintBacklog sprint = SprintBacklogRepository.findBySprintNumber(SprintNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Sprint non trouvé avec le numéro: " + SprintNumber));
+
+
+        long daysRemaining = java.time.temporal.ChronoUnit.DAYS.between(
+                LocalDate.now(), sprint.getEndDate());
+
+        if (daysRemaining <= 0) {
+            return List.of();
+        }
+
+        return taskRepository.findBySprintBacklogIdAndStatusNot(SprintNumber, WorkItemStatus.DONE)
+                .stream()
+                .filter(task -> {
+                    int remainingHours = task.getEstimatedHours() - task.getActualHours();
+                    return remainingHours > (daysRemaining * 8); // 8 heures par jour
+                })
+                .toList();
+    }
+
+    /**
+     * Dupliquer une tâche
+     */
+    public Task duplicateTask(Long taskId) {
+        Task original = getTaskById(taskId);
+
+        Task duplicate = new Task(
+                original.getTitle() + " (Copie)",
+                original.getDescription(),
+                original.getEstimatedHours()
+        );
+        duplicate.setUserStory(original.getUserStory());
+        duplicate.setSprintBacklog(original.getSprintBacklog());
+
+        return taskRepository.save(duplicate);
+    }
+
+    /**
+     * Met à jour le titre d'une tâche
+     */
+    public Task updateTaskTitle(Long taskId, String title) {
+        if (title == null || title.trim().isEmpty()) {
+            throw new IllegalArgumentException("Le titre ne peut pas être vide");
+        }
+
+        Task task = getTaskById(taskId);
+        task.setTitle(title);
+        return taskRepository.save(task);
+    }
+
+    /**
+     * Récupère les tâches terminées récemment
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getRecentlyCompletedTasks(Integer sprintBacklogId, int days) {
+        LocalDate sinceDate = LocalDate.now().minusDays(days);
+        return taskRepository.findBySprintBacklogIdAndStatusAndCompletedDateAfter(
+                sprintBacklogId, WorkItemStatus.DONE, sinceDate);
+    }
+
+    /**
+     * Calcule le temps restant total pour un sprint
+     */
+    @Transactional(readOnly = true)
+    public int calculateRemainingHours(Integer sprintBacklogId) {
+        List<Task> tasks = taskRepository.findBySprintBacklogIdAndStatusNot(
+                sprintBacklogId, WorkItemStatus.DONE);
+
+        return tasks.stream()
+                .mapToInt(task -> Math.max(0, task.getEstimatedHours() - task.getActualHours()))
+                .sum();
+    }
+
+    /**
+     * Récupère les statistiques des tâches d'un sprint
+     */
+    @Transactional(readOnly = true)
+    public SprintTaskStatistics getSprintTaskStatistics(Integer sprintBacklogId) {
+        List<Task> allTasks = taskRepository.findBySprintBacklogId(sprintBacklogId);
+
+        long todoCount = allTasks.stream().filter(t -> t.getStatus() == WorkItemStatus.TODO).count();
+        long inProgressCount = allTasks.stream().filter(t -> t.getStatus() == WorkItemStatus.IN_PROGRESS).count();
+        long inReviewCount = allTasks.stream().filter(t -> t.getStatus() == WorkItemStatus.IN_REVIEW).count();
+        long testingCount = allTasks.stream().filter(t -> t.getStatus() == WorkItemStatus.TESTING).count();
+        long doneCount = allTasks.stream().filter(t -> t.getStatus() == WorkItemStatus.DONE).count();
+        long blockedCount = allTasks.stream().filter(Task::isBlocked).count();
+
+        int totalEstimated = allTasks.stream().mapToInt(Task::getEstimatedHours).sum();
+        int totalActual = allTasks.stream().mapToInt(Task::getActualHours).sum();
+
+        double efficiency = totalEstimated > 0 ? (totalEstimated * 100.0) / totalActual : 0.0;
+
+        return new SprintTaskStatistics(
+                allTasks.size(),
+                (int) todoCount,
+                (int) inProgressCount,
+                (int) inReviewCount,
+                (int) testingCount,
+                (int) doneCount,
+                (int) blockedCount,
+                totalEstimated,
+                totalActual,
+                efficiency
+        );
+    }
+
+    /**
+     * Vérifie si une tâche peut être supprimée
+     */
+    @Transactional(readOnly = true)
+    public boolean canDeleteTask(Long taskId) {
+        Task task = getTaskById(taskId);
+        return task.getStatus() != WorkItemStatus.DONE && task.getActualHours() == 0;
+    }
+
+    /**
+     * Récupère les tâches assignées à un utilisateur pour un sprint spécifique
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getUserTasksForSprint(Long userId, Long sprintBacklogId) {
+        return taskRepository.findByAssignedUserIdAndSprintBacklogId(userId, sprintBacklogId);
+    }
+
+    /**
+     * Classe pour les statistiques des tâches d'un sprint
+     */
+    public record SprintTaskStatistics(
+            int totalTasks,
+            int todoTasks,
+            int inProgressTasks,
+            int inReviewTasks,
+            int testingTasks,
+            int doneTasks,
+            int blockedTasks,
+            int totalEstimatedHours,
+            int totalActualHours,
+            double efficiency
+    ) {}
+
 }

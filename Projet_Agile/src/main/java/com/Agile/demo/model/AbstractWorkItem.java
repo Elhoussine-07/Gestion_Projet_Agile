@@ -156,7 +156,7 @@ public abstract class AbstractWorkItem {
 
     // ===== MÉTHODES ABSTRAITES (à implémenter par les classes filles) =====
 
-    public abstract String getDescription();
+    //public abstract String getDescription();
 
     // ===== MÉTHODES STANDARD =====
 

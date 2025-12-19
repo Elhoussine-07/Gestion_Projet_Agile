@@ -146,8 +146,6 @@ public class UserStory extends AbstractWorkItem {
     }
 
 
-
-
     /**
      * Constructeur complet pour les tests ou migrations
      */

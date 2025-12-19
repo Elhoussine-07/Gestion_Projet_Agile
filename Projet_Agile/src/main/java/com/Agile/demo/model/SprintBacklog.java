@@ -1,9 +1,9 @@
 package com.Agile.demo.model;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -17,10 +17,13 @@ import java.util.List;
 @Table(name = "sprint_backlogs")
 public class SprintBacklog extends AbstractBacklog {
 
-    @Column(nullable = false)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer sprintNumber;
+    private Long id;
+
+    // CORRECTION: Retirer le @Id en double ici
+    @Column(nullable = false)
+    private Integer SprintNumber;
 
     @Column(nullable = false)
     private LocalDate startDate;
@@ -56,7 +59,7 @@ public class SprintBacklog extends AbstractBacklog {
     // Constructeur personnalisé
     public SprintBacklog(String name, Integer sprintNumber, LocalDate startDate, LocalDate endDate, String goal) {
         super(name, "Sprint Backlog for " + name);
-        this.sprintNumber = sprintNumber;
+        this.SprintNumber = sprintNumber;
         this.startDate = startDate;
         this.endDate = endDate;
         this.goal = goal;
@@ -106,9 +109,6 @@ public class SprintBacklog extends AbstractBacklog {
         this.sprintStatus = SprintStatus.CANCELLED;
     }
 
-    /**
-     * Calcule la vélocité du sprint (somme des story points des User Stories complétées)
-     */
     public int calculateVelocity() {
         return userStories.stream()
                 .filter(us -> us.getStatus() == WorkItemStatus.DONE)
@@ -116,9 +116,6 @@ public class SprintBacklog extends AbstractBacklog {
                 .sum();
     }
 
-    /**
-     * Calcule le pourcentage de progression du sprint
-     */
     public double calculateProgress() {
         if (userStories.isEmpty()) {
             return 0.0;
@@ -129,18 +126,12 @@ public class SprintBacklog extends AbstractBacklog {
         return (completedStories * 100.0) / userStories.size();
     }
 
-    /**
-     * Calcule le nombre total de story points du sprint
-     */
     public int getTotalStoryPoints() {
         return userStories.stream()
                 .mapToInt(UserStory::getStoryPoints)
                 .sum();
     }
 
-    /**
-     * Calcule le nombre de story points restants
-     */
     public int getRemainingStoryPoints() {
         return userStories.stream()
                 .filter(us -> us.getStatus() != WorkItemStatus.DONE)
@@ -148,23 +139,14 @@ public class SprintBacklog extends AbstractBacklog {
                 .sum();
     }
 
-    /**
-     * Vérifie si le sprint est en cours
-     */
     public boolean isActive() {
         return sprintStatus == SprintStatus.ACTIVE;
     }
 
-    /**
-     * Vérifie si le sprint est terminé
-     */
     public boolean isCompleted() {
         return sprintStatus == SprintStatus.COMPLETED;
     }
 
-    /**
-     * Obtient la durée du sprint en jours
-     */
     public long getSprintDuration() {
         return java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
     }
@@ -180,12 +162,7 @@ public class SprintBacklog extends AbstractBacklog {
         }
     }
 
-    /**
-     * Retire un item du sprint backlog
-     *
-     * @param item L'item à retirer
-     */
-
+    @Override
     public void removeItem(AbstractWorkItem item) {
         if (item instanceof UserStory) {
             removeUserStory((UserStory) item);
@@ -194,11 +171,6 @@ public class SprintBacklog extends AbstractBacklog {
         }
     }
 
-    /**
-     * Retourne tous les items (UserStories + Tasks) du sprint
-     *
-     * @return Liste de tous les AbstractWorkItem
-     */
     @Override
     public List<AbstractWorkItem> getItems() {
         List<AbstractWorkItem> items = new ArrayList<>();
@@ -207,8 +179,26 @@ public class SprintBacklog extends AbstractBacklog {
         return items;
     }
 
-    public void setsprintNumber(long l) {
-        this.sprintNumber = Math.toIntExact(l);
+    public void setSprintNumber(Integer sprintNumber) {
+        this.SprintNumber = sprintNumber;
     }
 
+    @Override
+    public String toString() {
+        return String.format("SprintBacklog{id=%d, sprintNumber=%d, name='%s', status=%s, startDate=%s, endDate=%s}",
+                id, SprintNumber, getName(), sprintStatus, startDate, endDate);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SprintBacklog)) return false;
+        SprintBacklog that = (SprintBacklog) o;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

@@ -1,8 +1,11 @@
 package com.Agile.demo.execution.services;
 
-import com.Agile.demo.model.*;
 import com.Agile.demo.execution.repositories.SprintBacklogRepository;
-import com.Agile.demo.execution.repositories.ProjectRepository;
+import com.Agile.demo.model.SprintBacklog;
+import com.Agile.demo.planning.repository.ProjectRepository;
+import com.Agile.demo.model.Project;
+import com.Agile.demo.model.SprintStatus;
+import com.Agile.demo.model.UserStory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +24,15 @@ public class SprintService {
     /**
      * Crée un nouveau sprint pour un projet
      */
-    public SprintBacklog createSprint(Long projectId, Integer sprintNumber,
+    public SprintBacklog createSprint(Long projectId, Integer SprintNumber,
                                       LocalDate startDate, LocalDate endDate, String goal) {
         // Vérifier que le projet existe
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Projet non trouvé avec l'ID: " + projectId));
+                .orElseThrow(()-> new IllegalArgumentException("Projet non trouvé avec l'ID: " + projectId));
 
         // Vérifier qu'il n'y a pas déjà un sprint avec ce numéro
-        if (sprintBacklogRepository.existsByProjectIdAndSprintNumber(projectId, sprintNumber)) {
-            throw new IllegalStateException("Un sprint avec le numéro " + sprintNumber + " existe déjà pour ce projet");
+        if (sprintBacklogRepository.existsByProjectIdAndSprintNumber(projectId, SprintNumber)) {
+            throw new IllegalStateException("Un sprint avec le numéro " + SprintNumber + " existe déjà pour ce projet");
         }
 
         // Vérifier qu'il n'y a pas déjà un sprint actif
@@ -45,8 +48,8 @@ public class SprintService {
         }
 
         // Créer le sprint
-        String sprintName = "Sprint " + sprintNumber;
-        SprintBacklog sprint = new SprintBacklog(sprintName, sprintNumber, startDate, endDate, goal);
+        String sprintName = "Sprint " + SprintNumber;
+        SprintBacklog sprint = new SprintBacklog(sprintName, SprintNumber, startDate, endDate, goal);
         sprint.setProject(project);
 
         return sprintBacklogRepository.save(sprint);
@@ -75,17 +78,17 @@ public class SprintService {
      * Récupère un sprint par son ID
      */
     @Transactional(readOnly = true)
-    public SprintBacklog getSprintById(Long sprintId) {
-        return sprintBacklogRepository.findById(sprintId)
-                .orElseThrow(() -> new IllegalArgumentException("Sprint non trouvé avec l'ID: " + sprintId));
+    public SprintBacklog getSprintById(Long SprintNumber) {
+        return sprintBacklogRepository.findById(SprintNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Sprint non trouvé avec le Numéro: " + SprintNumber));
     }
 
     /**
      * Met à jour un sprint
      */
-    public SprintBacklog updateSprint(Long sprintId, LocalDate startDate,
+    public SprintBacklog updateSprint(Long SprintNumber, LocalDate startDate,
                                       LocalDate endDate, String goal) {
-        SprintBacklog sprint = getSprintById(sprintId);
+        SprintBacklog sprint = getSprintById(SprintNumber);
 
         // Ne peut pas modifier un sprint terminé ou annulé
         if (sprint.getSprintStatus() == SprintStatus.COMPLETED ||
@@ -203,4 +206,157 @@ public class SprintService {
             int remainingStoryPoints,
             long durationInDays
     ) {}
+
+    // Méthodes à ajouter dans SprintService
+
+    /**
+     * Récupère le dernier sprint d'un projet
+     */
+    @Transactional(readOnly = true)
+    public SprintBacklog getLastSprint(Long projectId) {
+        return sprintBacklogRepository.findTopByProjectIdOrderBySprintNumberDesc(projectId)
+                .orElseThrow(() -> new IllegalStateException("Aucun sprint trouvé pour ce projet"));
+    }
+
+    /**
+     * Récupère les sprints par statut
+     */
+    @Transactional(readOnly = true)
+    public List<SprintBacklog> getSprintsByStatus(Long projectId, SprintStatus status) {
+        return sprintBacklogRepository.findByProjectIdAndSprintStatus(projectId, status);
+    }
+
+    /**
+     * Vérifie si un sprint peut être démarré
+     */
+    @Transactional(readOnly = true)
+    public boolean canStartSprint(Long sprintId) {
+        SprintBacklog sprint = getSprintById(sprintId);
+
+        if (sprint.getSprintStatus() != SprintStatus.PLANNED) {
+            return false;
+        }
+
+        // Vérifier qu'il y a au moins une user story
+        if (sprint.getUserStories().isEmpty()) {
+            return false;
+        }
+
+        // Vérifier qu'il n'y a pas déjà un sprint actif
+        long activeSprintsCount = sprintBacklogRepository.countByProjectIdAndSprintStatus(
+                sprint.getProject().getId(), SprintStatus.ACTIVE);
+
+        return activeSprintsCount == 0;
+    }
+
+    /**
+     * Récupère les sprints entre deux dates
+     */
+    @Transactional(readOnly = true)
+    public List<SprintBacklog> getSprintsBetweenDates(Long projectId, LocalDate startDate, LocalDate endDate) {
+        return sprintBacklogRepository.findByProjectIdAndStartDateBetween(projectId, startDate, endDate);
+    }
+
+    /**
+     * Déplace une user story d'un sprint à un autre
+     */
+    public void moveUserStoryBetweenSprints(Long fromSprintId, Long toSprintId, Long userStoryId) {
+        SprintBacklog fromSprint = getSprintById(fromSprintId);
+        SprintBacklog toSprint = getSprintById(toSprintId);
+
+        UserStory userStory = fromSprint.getUserStories().stream()
+                .filter(us -> us.getId().equals(userStoryId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("User Story non trouvée dans le sprint source"));
+
+        if (toSprint.getSprintStatus() == SprintStatus.COMPLETED ||
+                toSprint.getSprintStatus() == SprintStatus.CANCELLED) {
+            throw new IllegalStateException("Impossible d'ajouter des stories à un sprint terminé ou annulé");
+        }
+
+        fromSprint.removeUserStory(userStory);
+        toSprint.addUserStory(userStory);
+
+        sprintBacklogRepository.save(fromSprint);
+        sprintBacklogRepository.save(toSprint);
+    }
+
+    /**
+     * Récupère le burndown chart d'un sprint
+     */
+    @Transactional(readOnly = true)
+    public SprintBurndown getSprintBurndown(Long sprintId) {
+        SprintBacklog sprint = getSprintById(sprintId);
+
+        int totalStoryPoints = sprint.getTotalStoryPoints();
+        int remainingStoryPoints = sprint.getRemainingStoryPoints();
+        int completedStoryPoints = totalStoryPoints - remainingStoryPoints;
+
+        long totalDays = sprint.getSprintDuration();
+        long elapsedDays = LocalDate.now().isBefore(sprint.getStartDate()) ? 0 :
+                LocalDate.now().isAfter(sprint.getEndDate()) ? totalDays :
+                        java.time.temporal.ChronoUnit.DAYS.between(sprint.getStartDate(), LocalDate.now());
+
+        double idealBurnRate = totalDays > 0 ? (double) totalStoryPoints / totalDays : 0;
+        int idealRemaining = (int) (totalStoryPoints - (idealBurnRate * elapsedDays));
+
+        return new SprintBurndown(
+                totalStoryPoints,
+                remainingStoryPoints,
+                completedStoryPoints,
+                idealRemaining,
+                elapsedDays,
+                totalDays
+        );
+    }
+
+    /**
+     * Récupère les sprints avec des user stories incomplètes
+     */
+    @Transactional(readOnly = true)
+    public List<SprintBacklog> getSprintsWithIncompleteStories(Long projectId) {
+        return sprintBacklogRepository.findSprintsWithIncompleteStories(projectId);
+    }
+
+    /**
+     * Clone un sprint (pour réutiliser la configuration)
+     */
+    public SprintBacklog cloneSprint(Long sprintId, Integer newSprintNumber,
+                                     LocalDate newStartDate, LocalDate newEndDate) {
+        SprintBacklog originalSprint = getSprintById(sprintId);
+
+        if (sprintBacklogRepository.existsByProjectIdAndSprintNumber(
+                originalSprint.getProject().getId(), newSprintNumber)) {
+            throw new IllegalStateException("Un sprint avec ce numéro existe déjà");
+        }
+
+        SprintBacklog newSprint = new SprintBacklog(
+                "Sprint " + newSprintNumber,
+                newSprintNumber,
+                newStartDate,
+                newEndDate,
+                originalSprint.getGoal()
+        );
+        newSprint.setProject(originalSprint.getProject());
+
+        return sprintBacklogRepository.save(newSprint);
+    }
+
+    /**
+     * Classe pour le burndown chart
+     */
+    public record SprintBurndown(
+            int totalStoryPoints,
+            int remainingStoryPoints,
+            int completedStoryPoints,
+            int idealRemaining,
+            long elapsedDays,
+            long totalDays
+    ) {}
+
+// Méthodes à ajouter dans SprintBacklogRepository :
+// Optional<SprintBacklog> findTopByProjectIdOrderBySprintNumberDesc(Long projectId);
+// List<SprintBacklog> findByProjectIdAndStartDateBetween(Long projectId, LocalDate startDate, LocalDate endDate);
+// @Query("SELECT s FROM SprintBacklog s WHERE s.project.id = :projectId AND EXISTS (SELECT us FROM s.userStories us WHERE us.status != 'DONE')")
+// List<SprintBacklog> findSprintsWithIncompleteStories(@Param("projectId") Long projectId);
 }
