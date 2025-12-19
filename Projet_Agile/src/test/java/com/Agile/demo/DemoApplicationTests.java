@@ -1,4 +1,4 @@
-package com.agile.demo;
+package com.Agile.demo;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

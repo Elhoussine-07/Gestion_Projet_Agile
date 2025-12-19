@@ -1,4 +1,4 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,10 +1,10 @@
-package com.agile.demo.planning.service;
+package com.Agile.demo.planning.service;
 
-import com.agile.demo.model.Project;
-import com.agile.demo.model.User;
-import com.agile.demo.planning.repository.ProjectRepository;
-import com.agile.demo.common.exception.ResourceNotFoundException;
-import com.agile.demo.common.exception.BusinessException;
+import com.Agile.demo.model.Project;
+import com.Agile.demo.model.User;
+import com.Agile.demo.planning.repository.ProjectRepository;
+import com.Agile.demo.common.exception.ResourceNotFoundException;
+import com.Agile.demo.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,8 +39,12 @@ public class ProjectService {
         }
 
         // Création
-        Project project = new Project(name, description, startDate, endDate);
-
+        Project project = Project.builder()
+                .name(name)
+                .description(description)
+                .startDate(startDate)
+                .endDate(endDate)
+                .build();
         // Le ProductBacklog est créé automatiquement dans le constructeur
 
         Project saved = projectRepository.save(project);

@@ -1,4 +1,4 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
 public enum SprintStatus {
     PLANNED("Planifié"),

@@ -1,6 +1,5 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
-import com.Agile.demo.model.AbstractWorkItem;
 import jakarta.persistence.MappedSuperclass;
 
 import java.util.List;

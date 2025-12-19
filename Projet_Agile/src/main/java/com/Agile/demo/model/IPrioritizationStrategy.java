@@ -1,4 +1,4 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
 import java.util.Comparator;
 import java.util.List;

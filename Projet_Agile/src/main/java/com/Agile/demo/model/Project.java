@@ -1,9 +1,6 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -15,6 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "projects")
+@Builder
 public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,17 +41,6 @@ public class Project {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     private List<User> members = new ArrayList<>();
-
-    // Constructeur personnalisé sans l'ID (généré automatiquement)
-    public Project(String name, String description, LocalDate startDate, LocalDate endDate) {
-        this.name = name;
-        this.description = description;
-        this.startDate = startDate;
-        this.endDate = endDate;
-        this.productBacklog = new ProductBacklog();
-        this.sprints = new ArrayList<>();
-        this.members = new ArrayList<>();
-    }
 
     // Méthodes utilitaires pour maintenir la cohérence des relations
     public void addSprint(SprintBacklog sprint) {
