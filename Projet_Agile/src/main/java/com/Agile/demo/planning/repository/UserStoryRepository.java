@@ -16,7 +16,8 @@ public interface UserStoryRepository extends JpaRepository<UserStory, Long> {
 
     List<UserStory> findByEpicId(Long epicId);
 
-    List<UserStory> findBySprintId(Long id);
+
+    List<UserStory> findBySprintBacklogId(Long sprintBacklogId);
 
     List<UserStory> findByProductBacklogIdAndEpicIsNull(Long productBacklogId);
 

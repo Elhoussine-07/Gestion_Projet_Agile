@@ -1,8 +1,5 @@
 package com.Agile.demo.model;
 
-/**
- * Statuts possibles d'un élément de travail (UserStory ou Task)
- */
 public enum WorkItemStatus {
     
     // Backlog & Planning

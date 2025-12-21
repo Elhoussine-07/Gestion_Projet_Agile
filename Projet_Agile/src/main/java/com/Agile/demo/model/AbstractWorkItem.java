@@ -6,10 +6,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
-/**
- * Classe abstraite représentant un élément de travail (Work Item)
- * Parente commune de UserStory et Task
- */
+
 @MappedSuperclass
 @Getter
 @Setter
@@ -22,34 +19,24 @@ public abstract class AbstractWorkItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Long id;
 
-    /**
-     * Titre/nom de l'élément de travail
-     */
+
     @Column(nullable = false, length = 255)
     protected String title;
 
-    /**
-     * Statut actuel de l'élément
-     */
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     protected WorkItemStatus status = WorkItemStatus.TODO;
 
-    /**
-     * Date de création
-     */
+
     @Column(name = "created_date", nullable = false, updatable = false)
     protected LocalDateTime createdDate;
 
-    /**
-     * Date de dernière mise à jour
-     */
+
     @Column(name = "updated_date")
     protected LocalDateTime updatedDate;
 
-    /**
-     * Constructeur avec titre et statut
-     */
+
     public AbstractWorkItem(String title, WorkItemStatus status) {
         this.title = title;
         this.status = status;
@@ -57,14 +44,12 @@ public abstract class AbstractWorkItem {
         this.updatedDate = LocalDateTime.now();
     }
 
-    /**
-     * Constructeur avec titre seulement (statut par défaut TODO)
-     */
+
     public AbstractWorkItem(String title) {
         this(title, WorkItemStatus.TODO);
     }
 
-    // ===== MÉTHODES LIFECYCLE JPA =====
+
 
     @PrePersist
     protected void onCreate() {
@@ -77,65 +62,45 @@ public abstract class AbstractWorkItem {
         this.updatedDate = LocalDateTime.now();
     }
 
-    // ===== MÉTHODES MÉTIER =====
 
-    /**
-     * Met à jour le statut de l'élément
-     */
     public void updateStatus(WorkItemStatus newStatus) {
         this.status = newStatus;
         this.updatedDate = LocalDateTime.now();
     }
 
-    /**
-     * Vérifie si l'élément est terminé
-     */
+
     public boolean isDone() {
         return this.status == WorkItemStatus.DONE;
     }
 
-    /**
-     * Vérifie si l'élément est en cours
-     */
+
     public boolean isInProgress() {
         return this.status == WorkItemStatus.IN_PROGRESS;
     }
 
-    /**
-     * Vérifie si l'élément est bloqué
-     */
+
     public boolean isBlocked() {
         return this.status == WorkItemStatus.BLOCKED;
     }
 
-    /**
-     * Démarre l'élément (passe en IN_PROGRESS)
-     */
+
     public void start() {
         if (this.status == WorkItemStatus.TODO) {
             updateStatus(WorkItemStatus.IN_PROGRESS);
         }
     }
 
-    /**
-     * Termine l'élément (passe en DONE)
-     */
+
     public void complete() {
         updateStatus(WorkItemStatus.DONE);
     }
 
-    /**
-     * Bloque l'élément
-     */
+
     public void block() {
         updateStatus(WorkItemStatus.BLOCKED);
     }
 
-    /**
-     * Calcule le pourcentage de progression
-     * Par défaut, basé sur le statut
-     * Peut être surchargé par les classes filles
-     */
+
     public int getProgress() {
         switch (this.status) {
             case TODO:
@@ -153,11 +118,6 @@ public abstract class AbstractWorkItem {
         }
     }
 
-    // ===== MÉTHODES ABSTRAITES (à implémenter par les classes filles) =====
-
-    //public abstract String getDescription();
-
-    // ===== MÉTHODES STANDARD =====
 
     @Override
     public boolean equals(Object o) {

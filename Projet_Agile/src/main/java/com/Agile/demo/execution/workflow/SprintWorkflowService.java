@@ -276,7 +276,7 @@ public class SprintWorkflowService {
                 .count();
 
         // Métriques des tâches
-        List<Task> allTasks = taskRepository.findBySprintBacklogId(sprintId);
+        List<Task> allTasks = taskRepository.findBySprintBacklogId(Math.toIntExact(sprintId));
         long totalTasks = allTasks.size();
         long completedTasks = allTasks.stream()
                 .filter(task -> task.getStatus() == WorkItemStatus.DONE)

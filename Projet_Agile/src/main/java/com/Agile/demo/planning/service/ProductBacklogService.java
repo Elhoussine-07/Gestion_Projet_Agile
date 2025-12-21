@@ -224,14 +224,9 @@ public class ProductBacklogService {
         }
     }
 
-    /**
-     * Vérifie que le sprint a assez de capacité pour la story
-     * @param sprint Sprint cible
-     * @param story User Story à ajouter
-     */
     private void validateSprintCapacity(SprintBacklog sprint, UserStory story) {
         // Calculer les points déjà alloués au sprint
-        List<UserStory> sprintStories = userStoryRepository.findBySprintId(sprint.getId());
+        List<UserStory> sprintStories = userStoryRepository.findBySprintBacklogId(sprint.getId());
         Integer allocatedPoints = sprintStories.stream()
                 .filter(s -> s.getStoryPoints() != null)
                 .mapToInt(UserStory::getStoryPoints)
@@ -248,10 +243,7 @@ public class ProductBacklogService {
         }
     }
 
-    /**
-     * Met à jour la valeur métier totale du backlog
-     * @param backlog Product Backlog
-     */
+
     @Transactional
     private void updateTotalBusinessValue(ProductBacklog backlog) {
         Integer totalValue = calculateTotalBusinessValue(backlog.getId());

@@ -6,10 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import jakarta.persistence.*;
 
-/**
- * Value Object représentant la description structurée d'une User Story
- * selon le format Agile standard : "En tant que... Je veux... Afin de..."
- */
 @Embeddable
 @Getter
 @NoArgsConstructor
@@ -32,13 +28,6 @@ public class UserStoryDescription {
                 role, action, purpose);
     }
 
-    /**
-     * Crée une description à partir d'un texte formaté
-     * Utile pour parser une description existante
-     *
-     * @param formattedDescription La description au format standard
-     * @return UserStoryDescription ou null si le format est invalide
-     */
     public static UserStoryDescription fromString(String formattedDescription) {
         if (formattedDescription == null || formattedDescription.isEmpty()) {
             return null;
@@ -62,22 +51,14 @@ public class UserStoryDescription {
         }
     }
 
-    /**
-     * Vérifie si la description est valide (tous les champs remplis)
-     *
-     * @return true si tous les champs sont non-vides
-     */
+
     public boolean isValid() {
         return role != null && !role.trim().isEmpty()
                 && action != null && !action.trim().isEmpty()
                 && purpose != null && !purpose.trim().isEmpty();
     }
 
-    /**
-     * Génère une version courte de la description (sans le "afin de")
-     *
-     * @return Version abrégée
-     */
+
     public String toShortString() {
         return String.format("En tant que %s, je veux %s", role, action);
     }

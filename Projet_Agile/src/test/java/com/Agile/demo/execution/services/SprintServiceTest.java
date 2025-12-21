@@ -125,7 +125,7 @@ class SprintServiceTest {
     void getSprintsByProject_ShouldReturnAllSprints() {
         // Arrange
         List<SprintBacklog> sprints = List.of(sprint);
-        when(sprintBacklogRepository.findByProjectSprintNumber(1L)).thenReturn(sprints);
+        when(sprintBacklogRepository.findByProjectId(1L)).thenReturn(sprints);
 
         // Act
         List<SprintBacklog> result = sprintService.getSprintsByProject(1L);

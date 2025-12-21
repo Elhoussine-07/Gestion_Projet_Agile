@@ -228,16 +228,11 @@ public class TaskService {
     /**
      * Récupère les tâches non assignées d'un sprint
      */
-    @Transactional(readOnly = true)
-    public List<Task> getUnassignedTasksBySprint(Long sprintBacklogId) {
-        return taskRepository.findBySprintBacklogIdAndAssignedUserIsNull(sprintBacklogId);
-    }
-
     /**
      * Récupère les tâches en retard d'un sprint
      */
     @Transactional(readOnly = true)
-    public List<Task> getOverEstimatedTasksBySprint(Long sprintBacklogId) {
+    public List<Task> findOverEstimatedTasksBySprint(Long sprintBacklogId) {
         return taskRepository.findOverEstimatedTasksBySprint(sprintBacklogId);
     }
 
@@ -332,7 +327,24 @@ public class TaskService {
      */
     @Transactional(readOnly = true)
     public List<Task> getTasksExceedingEstimate(Integer sprintBacklogId) {
-        return taskRepository.findBySprintBacklogIdAndActualHoursGreaterThanEstimatedHours(sprintBacklogId);
+        // ✅ Utilise la méthode @Query au lieu de celle qui n'existe pas
+        return taskRepository.findOverEstimatedTasksBySprint(sprintBacklogId.longValue());
+    }
+
+    /**
+     * Récupère les tâches non assignées d'un sprint
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getUnassignedTasksBySprint(Long sprintBacklogId) {
+        return taskRepository.findBySprintBacklogIdAndAssignedUserIsNull(sprintBacklogId);
+    }
+
+    /**
+     * Récupère les tâches en retard d'un sprint
+     */
+    @Transactional(readOnly = true)
+    public List<Task> getOverEstimatedTasksBySprint(Long sprintBacklogId) {
+        return taskRepository.findOverEstimatedTasksBySprint(sprintBacklogId);
     }
 
     /**

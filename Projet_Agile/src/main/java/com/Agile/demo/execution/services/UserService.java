@@ -536,21 +536,4 @@ public class UserService {
             double overallCompletionRate
     ) {}
 
-// Méthodes à ajouter dans UserRepository :
-// List<User> findByIsActiveTrue();
-// List<User> findByRoleAndIsActiveTrue(Role role);
-// List<User> findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(String username, String email);
-// int countByRole(Role role);
-// @Query("SELECT COUNT(t) FROM Task t WHERE t.assignedUser.id = :userId AND t.completedDate BETWEEN :startDate AND :endDate AND t.status = 'DONE'")
-// int countTasksCompletedByUserBetweenDates(@Param("userId") Long userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
-
-// Ajouter dans l'entité User :
-// private boolean isActive = true;
-// private String firstName;
-// private String lastName;
-// private String phoneNumber;
-// private boolean passwordResetRequired = false;
-
-
-
 }
