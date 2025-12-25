@@ -23,8 +23,6 @@ public class SprintBacklog extends AbstractBacklog {
     private Long id;
 
     @Column(nullable = false)
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer sprintNumber;
 
     @Column(nullable = false)

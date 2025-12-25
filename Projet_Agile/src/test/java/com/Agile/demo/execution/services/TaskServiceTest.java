@@ -151,10 +151,10 @@ class TaskServiceTest {
     void getTasksBySprint_ShouldReturnTasks() {
         // Arrange
         List<Task> tasks = List.of(task);
-        when(taskRepository.findBySprintBacklogId(1L)).thenReturn(tasks);
+        when(taskRepository.findBySprintBacklogId(1)).thenReturn(tasks);
 
         // Act
-        List<Task> result = taskService.getTasksBySprint(1L);
+        List<Task> result = taskService.getTasksBySprint(1);
 
         // Assert
         assertThat(result).hasSize(1);
@@ -412,7 +412,7 @@ class TaskServiceTest {
         when(taskRepository.findOverEstimatedTasksBySprint(1L)).thenReturn(tasks);
 
         // Act
-        List<Task> result = taskService.getOverEstimatedTasksBySprint(1L);
+        List<Task> result = taskService.findOverEstimatedTasksBySprint(1L);
 
         // Assert
         assertThat(result).hasSize(1);

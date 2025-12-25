@@ -231,7 +231,7 @@ class ProductBacklogServiceTest {
     void moveStoryToSprint_shouldMoveStory_whenValid() {
         when(userStoryRepository.findById(101L)).thenReturn(Optional.of(story1));
         when(sprintRepository.findById(1L)).thenReturn(Optional.of(sprint));
-        when(userStoryRepository.findBySprintId(1L)).thenReturn(List.of());
+        when(userStoryRepository.findBySprintBacklogId(1L)).thenReturn(List.of());
         when(userStoryRepository.save(story1)).thenReturn(story1);
 
         productBacklogService.moveStoryToSprint(101L, 1L);
@@ -286,7 +286,7 @@ class ProductBacklogServiceTest {
 
         when(userStoryRepository.findById(101L)).thenReturn(Optional.of(story1));
         when(sprintRepository.findById(1L)).thenReturn(Optional.of(sprint));
-        when(userStoryRepository.findBySprintId(1L)).thenReturn(List.of());
+        when(userStoryRepository.findBySprintBacklogId(1L)).thenReturn(List.of());
 
         assertThrows(ValidationException.class,
                 () -> productBacklogService.moveStoryToSprint(101L, 1L));

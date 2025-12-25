@@ -1,29 +1,30 @@
 package com.Agile.demo.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 
-/**
- * Configuration de sécurité pour l'encodage des mots de passe
- */
 @Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
-    private static SecurityConfig securityConfig;
 
-    private SecurityConfig() {}
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())  // Désactive CSRF pour les API REST
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()  // Permet tous les accès (temporaire pour tests)
+                );
 
-    public static SecurityConfig getInstance(){
-    if(securityConfig==null){
-        securityConfig = new SecurityConfig();
+        return http.build();
     }
-    return securityConfig;
-    }
-    /**
-     * Bean pour l'encodage des mots de passe
-     * Utilise BCrypt qui est un algorithme de hachage sécurisé
-     */
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

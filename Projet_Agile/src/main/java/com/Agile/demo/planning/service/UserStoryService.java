@@ -242,4 +242,9 @@ public class UserStoryService {
                 ? story.getAcceptanceCriteria().toGherkinFormat()
                 : "No acceptance criteria defined";
     }
+
+
+    public List<UserStory> getAllUserStories() {
+        return userStoryRepository.findAll();
+    }
 }

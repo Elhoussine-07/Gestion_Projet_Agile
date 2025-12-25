@@ -54,9 +54,11 @@ public class Task extends AbstractWorkItem {
     @JoinColumn(name = "assigned_user_id")
     private User assignedUser;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "sprint_backlog_id")
     private SprintBacklog sprintBacklog;
+
+
 
     // ===== CONSTRUCTEURS (INCHANGÉS) =====
 

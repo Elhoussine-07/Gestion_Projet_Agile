@@ -8,3 +8,4 @@ target/
 # Logs
 *.log
 target/
+.idea/
