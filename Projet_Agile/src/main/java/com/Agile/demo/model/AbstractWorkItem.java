@@ -26,6 +26,7 @@ public abstract class AbstractWorkItem {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     protected WorkItemStatus status = WorkItemStatus.TODO;
 
 

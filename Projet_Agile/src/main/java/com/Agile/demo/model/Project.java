@@ -31,6 +31,7 @@ public class Project {
     @JoinColumn(name = "product_backlog_id")
     private ProductBacklog productBacklog;
 
+    @Builder.Default
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SprintBacklog> sprints = new ArrayList<>();
 
@@ -40,7 +41,18 @@ public class Project {
             joinColumns = @JoinColumn(name = "project_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @Builder.Default
     private List<User> members = new ArrayList<>();
+
+    // Créer automatiquement le productBacklog
+    @PrePersist
+    protected void onCreate() {
+        if (this.productBacklog == null) {
+            this.productBacklog = new ProductBacklog();
+            this.productBacklog.setName(this.name + " - Product Backlog");
+            this.productBacklog.setProject(this);
+        }
+    }
 
     // Méthodes utilitaires pour maintenir la cohérence des relations
     public void addSprint(SprintBacklog sprint) {
