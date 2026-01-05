@@ -36,6 +36,10 @@ public class User {
      */
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
+    public void setisActive(Boolean isActive) {
+        this.isActive = isActive;
+    }
+
 
     /**
      * Prénom de l'utilisateur

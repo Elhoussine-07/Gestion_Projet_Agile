@@ -3,6 +3,7 @@ package com.Agile.demo.execution.services;
 import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
 import com.Agile.demo.execution.repositories.UserRepository;
+import com.Agile.demo.model.WorkItemStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class UserService {
     /**
      * Crée un nouvel utilisateur
      */
-    public User createUser(String username, String email, String password, Role role) {
+    public User createUser(String username, String email, String password, Role role, String FirstName, String LastName, String PhoneNumber) {
         // Vérifier que le nom d'utilisateur n'existe pas déjà
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Le nom d'utilisateur existe déjà: " + username);
@@ -45,6 +46,9 @@ public class UserService {
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(role);
+        user.setFirstName(FirstName);
+        user.setLastName(LastName);
+        user.setPhoneNumber(PhoneNumber);
 
         return userRepository.save(user);
     }
@@ -103,10 +107,9 @@ public class UserService {
     /**
      * Met à jour les informations d'un utilisateur
      */
-    public User updateUser(Long userId, String email, Role role) {
+    public User updateUser(Long userId, String email, Role role, String firstName, String lastName, String phoneNumber, Boolean isActive) {
         User user = getUserById(userId);
 
-        // Vérifier que l'email n'est pas déjà utilisé par un autre utilisateur
         if (email != null && !email.equals(user.getEmail())) {
             if (userRepository.existsByEmail(email)) {
                 throw new IllegalArgumentException("L'email existe déjà: " + email);
@@ -117,12 +120,15 @@ public class UserService {
             user.setEmail(email);
         }
 
-        if (role != null) {
-            user.setRole(role);
-        }
+        if (role != null) user.setRole(role);
+        if (firstName != null) user.setFirstName(firstName);
+        if (lastName != null) user.setLastName(lastName);
+        if (phoneNumber != null) user.setPhoneNumber(phoneNumber);
+        if (isActive != null) user.setisActive(isActive);
 
         return userRepository.save(user);
     }
+
 
     /**
      * Met à jour le mot de passe d'un utilisateur
@@ -151,7 +157,7 @@ public class UserService {
         User user = getUserById(userId);
 
         // Vérifier que l'utilisateur n'a pas de tâches en cours
-        long activeTasks = userRepository.countTasksByUserAndStatus(userId, "IN_PROGRESS");
+        long activeTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS);
         if (activeTasks > 0) {
             throw new IllegalStateException("Impossible de supprimer un utilisateur avec des tâches en cours");
         }
@@ -172,8 +178,8 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public long countUserActiveTasks(Long userId) {
-        return userRepository.countTasksByUserAndStatus(userId, "IN_PROGRESS") +
-                userRepository.countTasksByUserAndStatus(userId, "TODO");
+        return userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS) +
+                userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO);
     }
 
     /**
@@ -218,9 +224,9 @@ public class UserService {
     public UserStatistics getUserStatistics(Long userId) {
         User user = getUserById(userId);
 
-        long todoTasks = userRepository.countTasksByUserAndStatus(userId, "TODO");
-        long inProgressTasks = userRepository.countTasksByUserAndStatus(userId, "IN_PROGRESS");
-        long doneTasks = userRepository.countTasksByUserAndStatus(userId, "DONE");
+        long todoTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO);
+        long inProgressTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS);
+        long doneTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.DONE);
         long totalTasks = todoTasks + inProgressTasks + doneTasks;
 
         double completionRate = totalTasks > 0 ? (doneTasks * 100.0) / totalTasks : 0.0;
@@ -250,69 +256,51 @@ public class UserService {
     ) {}
 
 
-// Méthodes à ajouter dans UserService
-
-    /**
-     * Active un utilisateur
-     */
     public User activateUser(Long userId) {
         User user = getUserById(userId);
-        user.setActive(true);
+        user.setisActive(true);
         return userRepository.save(user);
     }
 
-    /**
-     * Désactive un utilisateur
-     */
+
     public User deactivateUser(Long userId) {
         User user = getUserById(userId);
 
         // Vérifier qu'il n'a pas de tâches en cours
-        long activeTasks = userRepository.countTasksByUserAndStatus(userId, "IN_PROGRESS");
+        long activeTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS);
         if (activeTasks > 0) {
             throw new IllegalStateException("Impossible de désactiver un utilisateur avec des tâches en cours");
         }
 
-        user.setActive(false);
+        user.setisActive(false);
         return userRepository.save(user);
     }
 
-    /**
-     * Récupère les utilisateurs actifs
-     */
+
     @Transactional(readOnly = true)
     public List<User> getActiveUsers() {
         return userRepository.findByIsActiveTrue();
     }
 
-    /**
-     * Récupère les utilisateurs par rôle et statut actif
-     */
+
     @Transactional(readOnly = true)
     public List<User> getActiveUsersByRole(Role role) {
         return userRepository.findByRoleAndIsActiveTrue(role);
     }
 
-    /**
-     * Recherche des utilisateurs par nom d'utilisateur ou email
-     */
+
     @Transactional(readOnly = true)
     public List<User> searchUsers(String searchTerm) {
         return userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(
                 searchTerm, searchTerm);
     }
 
-    /**
-     * Récupère les développeurs disponibles pour assignation
-     */
+
     @Transactional(readOnly = true)
     public List<User> getAvailableDevelopers(int maxActiveTasks) {
         return userRepository.findAvailableUsersByRole(Role.DEVELOPER, maxActiveTasks);
     }
 
-    /**
-     * Récupère les utilisateurs les plus chargés
-     */
     @Transactional(readOnly = true)
     public List<UserWorkload> getMostLoadedUsers(int limit) {
         List<User> users = userRepository.findAll();
@@ -332,9 +320,7 @@ public class UserService {
                 .toList();
     }
 
-    /**
-     * Récupère la charge de travail d'une équipe
-     */
+
     @Transactional(readOnly = true)
     public TeamWorkload getTeamWorkload(Long projectId) {
         List<User> teamMembers = getUsersByProject(projectId);
@@ -369,18 +355,14 @@ public class UserService {
         );
     }
 
-    /**
-     * Vérifie la disponibilité d'un utilisateur
-     */
+
     @Transactional(readOnly = true)
     public boolean isUserAvailable(Long userId, int maxTaskThreshold) {
         long activeTasks = countUserActiveTasks(userId);
         return activeTasks < maxTaskThreshold;
     }
 
-    /**
-     * Récupère l'utilisateur le moins chargé par rôle
-     */
+
     @Transactional(readOnly = true)
     public User getLeastLoadedUserByRole(Role role) {
         List<User> users = getActiveUsersByRole(role);
@@ -431,9 +413,7 @@ public class UserService {
         return roleCount;
     }
 
-    /**
-     * Réinitialise le mot de passe (pour admin)
-     */
+
     public User resetPassword(Long userId, String newPassword) {
         User user = getUserById(userId);
 

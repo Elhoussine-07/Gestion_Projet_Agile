@@ -151,9 +151,10 @@ public class TaskController {
     }
 
 
+    // ✅ CORRECT
     @GetMapping("/sprint/{sprintId}/unassigned")
     public ResponseEntity<List<Task>> getUnassignedTasksBySprint(@PathVariable Long sprintId) {
-        List<Task> tasks = taskService.findOverEstimatedTasksBySprint(sprintId);
+        List<Task> tasks = taskService.getUnassignedTasksBySprint(sprintId);
         return ResponseEntity.ok(tasks);
     }
 
@@ -243,7 +244,7 @@ public class TaskController {
 
     @GetMapping("/sprint/{sprintId}/remaining-hours")
     public ResponseEntity<Integer> calculateRemainingHours(@PathVariable Long sprintId) {
-        int remainingHours = taskService.calculateRemainingHours(sprintId.intValue());
+        int remainingHours = taskService.calculateRemainingHours((long) sprintId.intValue());
         return ResponseEntity.ok(remainingHours);
     }
 
@@ -279,3 +280,5 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }
+
+//dyal db

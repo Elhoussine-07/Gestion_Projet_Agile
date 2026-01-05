@@ -38,6 +38,10 @@ public class Task extends AbstractWorkItem {
     @Column(name = "block_reason", length = 500)
     private String blockReason;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "previous_status")
+    private WorkItemStatus previousStatus;
+
     /**
      * Date de complétion de la tâche
      */
