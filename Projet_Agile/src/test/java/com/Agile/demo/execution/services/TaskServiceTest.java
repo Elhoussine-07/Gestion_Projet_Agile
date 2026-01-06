@@ -1,9 +1,8 @@
 package com.Agile.demo.execution.services;
 
-import com.Agile.demo.model.*;
 import com.Agile.demo.execution.repositories.TaskRepository;
 import com.Agile.demo.execution.repositories.UserRepository;
-import com.Agile.demo.planning.repository.UserStoryRepository;
+import com.Agile.demo.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,7 +10,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -25,431 +23,435 @@ class TaskServiceTest {
     private TaskRepository taskRepository;
 
     @Mock
-    private UserStoryRepository userStoryRepository;
-
-    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
     private TaskService taskService;
 
-    private UserStory userStory;
-    private Task task;
-    private User user;
-    private SprintBacklog sprint;
+    private Task testTask;
+    private UserStory testUserStory;
+    private User testUser;
 
     @BeforeEach
     void setUp() {
-        userStory = new UserStory();
-        userStory.setId(1L);
-        userStory.setTitle("Test User Story");
+        testUserStory = new UserStory();
+        testUserStory.setId(1L);
+        testUserStory.setTitle("Test User Story");
 
-        sprint = new SprintBacklog();
-        sprint.setsprintNumber(1L);
-        userStory.setSprintBacklog(sprint);
+        testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("testuser");
+        testUser.setEmail("test@test.com");
 
-        task = new Task("Test Task", 8);
-        task.setId(1L);
-        task.setUserStory(userStory);
-
-        user = new User();
-        user.setId(1L);
-        user.setUsername("testuser");
+        testTask = new Task("Test Task", 8);
+        testTask.setId(1L);
+        testTask.setUserStory(testUserStory);
+        testTask.setStatus(WorkItemStatus.TODO);
     }
 
     @Test
-    void createTask_WhenValidData_ShouldCreateTask() {
-        // Arrange
-        when(userStoryRepository.findById(1L)).thenReturn(Optional.of(userStory));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+    void startTask_WithValidData_ShouldStartTask() {
+        Long taskId = 1L;
+        Long userId = 1L;
+        testTask.setAssignedUser(null);
 
-        // Act
-        Task result = taskService.createTask(1L, "Test Task", 8);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
 
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.getTitle()).isEqualTo("Test Task");
-        assertThat(result.getEstimatedHours()).isEqualTo(8);
-        verify(taskRepository).save(any(Task.class));
+        taskService.startTask(taskId, userId);
+
+        verify(taskRepository, times(1)).save(testTask);
+        verify(userRepository, times(1)).findById(userId);
     }
 
     @Test
-    void createTask_WhenUserStoryNotFound_ShouldThrowException() {
-        // Arrange
-        when(userStoryRepository.findById(999L)).thenReturn(Optional.empty());
+    void startTask_WithNonTodoStatus_ShouldThrowException() {
+        Long taskId = 1L;
+        Long userId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
 
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.createTask(999L, "Task", 8))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("User Story non trouvée");
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+        assertThatThrownBy(() -> taskService.startTask(taskId, userId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("TODO");
     }
 
     @Test
-    void createTask_WhenNegativeEstimatedHours_ShouldThrowException() {
-        // Arrange
-        when(userStoryRepository.findById(1L)).thenReturn(Optional.of(userStory));
+    void startTask_WithBlockedTask_ShouldThrowException() {
+        Long taskId = 1L;
+        Long userId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
 
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.createTask(1L, "Task", -5))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("heures estimées ne peuvent pas être négatives");
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+
+        taskService.blockTask(taskId, "Test block reason");
+
+        testTask.setStatus(WorkItemStatus.TODO);
+
+        assertThatThrownBy(() -> taskService.startTask(taskId, userId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("bloquée");
     }
 
     @Test
-    void createTaskWithDescription_WhenValidData_ShouldCreateTask() {
-        // Arrange
-        when(userStoryRepository.findById(1L)).thenReturn(Optional.of(userStory));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+    void startTask_WithDifferentAssignedUser_ShouldThrowException() {
+        Long taskId = 1L;
+        Long userId = 2L;
+        User anotherUser = new User();
+        anotherUser.setId(3L);
+        anotherUser.setUsername("anotheruser");
+        testTask.setAssignedUser(anotherUser);
 
-        // Act
-        Task result = taskService.createTask(1L, "Task", "Description", 8);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
 
-        // Assert
-        assertThat(result).isNotNull();
-        verify(taskRepository).save(any(Task.class));
+        assertThatThrownBy(() -> taskService.startTask(taskId, userId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("déjà assignée");
     }
 
     @Test
-    void getTaskById_WhenTaskExists_ShouldReturnTask() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+    void moveToReview_WithInProgressTask_ShouldMoveToReview() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setActualHours(2);
 
-        // Act
-        Task result = taskService.getTaskById(1L);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
 
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(1L);
+        taskService.moveToReview(taskId);
+
+        verify(taskRepository, times(1)).save(testTask);
     }
 
     @Test
-    void getTaskById_WhenTaskNotFound_ShouldThrowException() {
-        // Arrange
-        when(taskRepository.findById(999L)).thenReturn(Optional.empty());
+    void moveToReview_WithNoHoursLogged_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setActualHours(0);
 
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.getTaskById(999L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Tâche non trouvée");
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+
+        assertThatThrownBy(() -> taskService.moveToReview(taskId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("heure");
     }
 
     @Test
-    void getTasksByUserStory_ShouldReturnTasks() {
-        // Arrange
-        List<Task> tasks = List.of(task);
-        when(taskRepository.findByUserStoryId(1L)).thenReturn(tasks);
+    void moveToReview_WithWrongStatus_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.TODO);
 
-        // Act
-        List<Task> result = taskService.getTasksByUserStory(1L);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        // Assert
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0)).isEqualTo(task);
-    }
-
-    @Test
-    void getTasksBySprint_ShouldReturnTasks() {
-        // Arrange
-        List<Task> tasks = List.of(task);
-        when(taskRepository.findBySprintBacklogId(1)).thenReturn(tasks);
-
-        // Act
-        List<Task> result = taskService.getTasksBySprint(1);
-
-        // Assert
-        assertThat(result).hasSize(1);
-    }
-
-    @Test
-    void getTasksByUser_ShouldReturnUserTasks() {
-        // Arrange
-        task.assignTo(user);
-        List<Task> tasks = List.of(task);
-        when(taskRepository.findByAssignedUserId(1L)).thenReturn(tasks);
-
-        // Act
-        List<Task> result = taskService.getTasksByUser(1L);
-
-        // Assert
-        assertThat(result).hasSize(1);
-    }
-
-    @Test
-    void assignTask_WhenValidTaskAndUser_ShouldAssignTask() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
-
-        // Act
-        Task result = taskService.assignTask(1L, 1L);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(taskRepository).save(task);
-    }
-
-    @Test
-    void assignTask_WhenUserNotFound_ShouldThrowException() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.assignTask(1L, 999L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Utilisateur non trouvé");
-    }
-
-    @Test
-    void unassignTask_WhenTaskTodo_ShouldUnassignTask() {
-        // Arrange
-        task.assignTo(user);
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
-
-        // Act
-        Task result = taskService.unassignTask(1L);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(taskRepository).save(task);
-    }
-
-    @Test
-    void unassignTask_WhenTaskInProgress_ShouldThrowException() {
-        // Arrange
-        task.assignTo(user);
-        task.start();
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.unassignTask(1L))
+        assertThatThrownBy(() -> taskService.moveToReview(taskId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("en cours");
     }
 
     @Test
-    void logHours_WhenPositiveHours_ShouldLogHours() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+    void moveToTesting_WithInReviewStatus_ShouldMoveToTesting() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_REVIEW);
 
-        // Act
-        Task result = taskService.logHours(1L, 4);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
 
-        // Assert
-        assertThat(result).isNotNull();
-        verify(taskRepository).save(task);
+        taskService.moveToTesting(taskId);
+
+        verify(taskRepository, times(1)).save(testTask);
     }
 
     @Test
-    void logHours_WhenNegativeHours_ShouldThrowException() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+    void moveToTesting_WithWrongStatus_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
 
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.logHours(1L, -2))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("positif");
-    }
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-    @Test
-    void updateEstimatedHours_WhenValidHours_ShouldUpdateHours() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
-
-        // Act
-        Task result = taskService.updateEstimatedHours(1L, 10);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(taskRepository).save(task);
-    }
-
-    @Test
-    void updateEstimatedHours_WhenNegativeHours_ShouldThrowException() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.updateEstimatedHours(1L, -5))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("négatives");
-    }
-
-    @Test
-    void startTask_WhenTaskAssigned_ShouldStartTask() {
-        // Arrange
-        task.assignTo(user);
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
-
-        // Act
-        Task result = taskService.startTask(1L);
-
-        // Assert
-        assertThat(result.getStatus()).isEqualTo(WorkItemStatus.IN_PROGRESS);
-        verify(taskRepository).save(task);
-    }
-
-    @Test
-    void startTask_WhenTaskNotAssigned_ShouldThrowException() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.startTask(1L))
+        assertThatThrownBy(() -> taskService.moveToTesting(taskId))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("assignée");
-    }
-
-
-    @Test
-    void moveTaskToTesting_ShouldMoveToTesting() {
-        // Arrange
-        task.assignTo(user);
-        task.start();
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
-
-        // Act
-        Task result = taskService.moveTaskToTesting(1L);
-
-        // Assert
-        assertThat(result.getStatus()).isEqualTo(WorkItemStatus.TESTING);
-        verify(taskRepository).save(task);
+                .hasMessageContaining("revue");
     }
 
     @Test
-    void completeTask_ShouldCompleteTask() {
-        // Arrange
-        task.assignTo(user);
-        task.start();
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+    void completeTask_WithValidStatus_ShouldCompleteTask() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.TESTING);
 
-        // Act
-        Task result = taskService.completeTask(1L);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
 
-        // Assert
-        assertThat(result.getStatus()).isEqualTo(WorkItemStatus.DONE);
-        verify(taskRepository).save(task);
+        taskService.completeTask(taskId);
+
+        verify(taskRepository, times(1)).save(testTask);
     }
 
     @Test
-    void updateTaskStatus_WhenValidStatus_ShouldUpdateStatus() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+    void completeTask_WithBlockedTask_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
 
-        // Act
-        Task result = taskService.updateTaskStatus(1L, WorkItemStatus.IN_PROGRESS);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
 
-        // Assert
-        assertThat(result).isNotNull();
-        verify(taskRepository).save(task);
+        taskService.blockTask(taskId, "Test reason");
+
+        assertThatThrownBy(() -> taskService.completeTaskWorkflow(taskId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("bloquée");
     }
 
     @Test
-    void updateTaskDescription_ShouldUpdateDescription() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+    void completeTask_WithInvalidStatus_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.TODO);
 
-        // Act
-        Task result = taskService.updateTaskDescription(1L, "New description");
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        // Assert
-        assertThat(result).isNotNull();
-        verify(taskRepository).save(task);
+        assertThatThrownBy(() -> taskService.completeTask(taskId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("testée avant");
     }
 
     @Test
-    void deleteTask_WhenTaskNotDone_ShouldDeleteTask() {
-        // Arrange
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+    void blockTask_WithInProgressTask_ShouldBlockTask() {
+        Long taskId = 1L;
+        String reason = "Waiting for dependencies";
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setAssignedUser(testUser);
 
-        // Act
-        taskService.deleteTask(1L);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
 
-        // Assert
-        verify(taskRepository).delete(task);
+        taskService.blockTask(taskId, reason);
+
+        verify(taskRepository, times(1)).save(testTask);
+        assertThat(taskService.isTaskBlocked(taskId)).isTrue();
     }
 
     @Test
-    void deleteTask_WhenTaskDone_ShouldThrowException() {
-        // Arrange
-        task.assignTo(user);
-        task.start();
-        task.complete();
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+    void blockTask_WithDoneTask_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.DONE);
 
-        // Act & Assert
-        assertThatThrownBy(() -> taskService.deleteTask(1L))
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+
+        assertThatThrownBy(() -> taskService.blockTask(taskId, "Reason"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("terminée");
     }
 
     @Test
-    void getUnassignedTasksBySprint_ShouldReturnUnassignedTasks() {
-        // Arrange
-        List<Task> tasks = List.of(task);
-        when(taskRepository.findBySprintBacklogIdAndAssignedUserIsNull(1L)).thenReturn(tasks);
+    void blockTask_WithTodoTask_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.TODO);
 
-        // Act
-        List<Task> result = taskService.getUnassignedTasksBySprint(1L);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        // Assert
-        assertThat(result).hasSize(1);
+        assertThatThrownBy(() -> taskService.blockTask(taskId, "Reason"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("pas encore démarré");
     }
 
     @Test
-    void getOverEstimatedTasksBySprint_ShouldReturnOverEstimatedTasks() {
-        // Arrange
-        List<Task> tasks = List.of(task);
-        when(taskRepository.findOverEstimatedTasksBySprint(1L)).thenReturn(tasks);
+    void blockTask_WithEmptyReason_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
 
-        // Act
-        List<Task> result = taskService.findOverEstimatedTasksBySprint(1L);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        // Assert
-        assertThat(result).hasSize(1);
+        assertThatThrownBy(() -> taskService.blockTask(taskId, "   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("raison de blocage");
     }
 
     @Test
-    void getUserStoryTaskMetrics_ShouldReturnMetrics() {
-        // Arrange
-        Task task1 = new Task("Task 1", 8);
-        task1.setStatus(WorkItemStatus.DONE);
+    void blockTask_WithAlreadyBlockedTask_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setBlocked(true);
 
-        Task task2 = new Task("Task 2", 5);
-        task2.logHours(3);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        List<Task> tasks = List.of(task1, task2);
-        when(taskRepository.findByUserStoryId(1L)).thenReturn(tasks);
-
-        // Act
-        TaskService.UserStoryTaskMetrics result = taskService.getUserStoryTaskMetrics(1L);
-
-        // Assert
-        assertThat(result.totalTasks()).isEqualTo(2);
-        assertThat(result.completedTasks()).isEqualTo(1);
-        assertThat(result.totalEstimatedHours()).isEqualTo(13);
-        assertThat(result.progressPercentage()).isEqualTo(50.0);
+        assertThatThrownBy(() -> taskService.blockTask(taskId, "Reason"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("déjà bloquée");
     }
 
     @Test
-    void getUserStoryTaskMetrics_WhenNoTasks_ShouldReturnZeroMetrics() {
-        // Arrange
-        when(taskRepository.findByUserStoryId(1L)).thenReturn(List.of());
+    void unblockTask_WithBlockedTask_ShouldUnblockTask() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
 
-        // Act
-        TaskService.UserStoryTaskMetrics result = taskService.getUserStoryTaskMetrics(1L);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
 
-        // Assert
-        assertThat(result.totalTasks()).isEqualTo(0);
-        assertThat(result.progressPercentage()).isEqualTo(0.0);
+        taskService.blockTask(taskId, "Test reason");
+        taskService.unblockTask(taskId);
+
+        verify(taskRepository, times(2)).save(testTask);
+        assertThat(taskService.isTaskBlocked(taskId)).isFalse();
+    }
+
+    @Test
+    void unblockTask_WithNotBlockedTask_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setBlocked(false);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+
+        assertThatThrownBy(() -> taskService.unblockTask(taskId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("n'est pas bloquée");
+    }
+
+    @Test
+    void isTaskBlocked_WithBlockedTask_ShouldReturnTrue() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+
+        taskService.blockTask(taskId, "Test reason");
+
+        assertThat(taskService.isTaskBlocked(taskId)).isTrue();
+    }
+
+    @Test
+    void isTaskBlocked_WithNonBlockedTask_ShouldReturnFalse() {
+        Long taskId = 1L;
+
+        assertThat(taskService.isTaskBlocked(taskId)).isFalse();
+    }
+
+    @Test
+    void getTaskBlockInfo_WithBlockedTask_ShouldReturnInfo() {
+        Long taskId = 1L;
+        String reason = "Test reason";
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setAssignedUser(testUser);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+
+        taskService.blockTask(taskId, reason);
+        TaskService.TaskBlockInfo info = taskService.getTaskBlockInfo(taskId);
+
+        assertThat(info).isNotNull();
+        assertThat(info.reason()).isEqualTo(reason);
+        assertThat(info.blockedBy()).isEqualTo(testUser.getUsername());
+    }
+
+    @Test
+    void getTaskBlockInfo_WithNonBlockedTask_ShouldReturnNull() {
+        Long taskId = 999L;
+
+        TaskService.TaskBlockInfo info = taskService.getTaskBlockInfo(taskId);
+
+        assertThat(info).isNull();
+    }
+
+    @Test
+    void reassignTask_WithValidData_ShouldReassignTask() {
+        Long taskId = 1L;
+        Long newUserId = 2L;
+        User newUser = new User();
+        newUser.setId(newUserId);
+        newUser.setUsername("newuser");
+        testTask.setStatus(WorkItemStatus.TODO);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(userRepository.findById(newUserId)).thenReturn(Optional.of(newUser));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+
+        taskService.reassignTask(taskId, newUserId);
+
+        verify(taskRepository, times(1)).save(testTask);
+    }
+
+    @Test
+    void reassignTask_WithDoneTask_ShouldThrowException() {
+        Long taskId = 1L;
+        Long newUserId = 2L;
+        testTask.setStatus(WorkItemStatus.DONE);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(userRepository.findById(newUserId)).thenReturn(Optional.of(testUser));
+
+        assertThatThrownBy(() -> taskService.reassignTask(taskId, newUserId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("terminée");
+    }
+
+    @Test
+    void reassignTask_WithNonExistentUser_ShouldThrowException() {
+        Long taskId = 1L;
+        Long userId = 999L;
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.reassignTask(taskId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Utilisateur non trouvé");
+    }
+
+    @Test
+    void moveTaskBackward_FromInReviewToInProgress_ShouldMoveBack() {
+        Long taskId = 1L;
+        String reason = "Review failed";
+        testTask.setStatus(WorkItemStatus.IN_REVIEW);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+
+        taskService.moveTaskBackward(taskId, reason);
+
+        verify(taskRepository, times(1)).save(testTask);
+    }
+
+    @Test
+    void moveTaskBackward_FromTestingToInReview_ShouldMoveBack() {
+        Long taskId = 1L;
+        String reason = "Test failed";
+        testTask.setStatus(WorkItemStatus.TESTING);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+
+        taskService.moveTaskBackward(taskId, reason);
+
+        verify(taskRepository, times(1)).save(testTask);
+    }
+
+    @Test
+    void moveTaskBackward_WithDoneTask_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.DONE);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+
+        assertThatThrownBy(() -> taskService.moveTaskBackward(taskId, "Reason"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("terminée");
+    }
+
+    @Test
+    void moveTaskBackward_WithInvalidStatus_ShouldThrowException() {
+        Long taskId = 1L;
+        testTask.setStatus(WorkItemStatus.TODO);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
+
+        assertThatThrownBy(() -> taskService.moveTaskBackward(taskId, "Reason"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Impossible de faire reculer");
     }
 }

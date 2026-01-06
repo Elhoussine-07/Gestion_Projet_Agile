@@ -63,6 +63,8 @@ public class UserStoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog", productBacklogId));
 
         // Créer les critères
+
+
         AcceptanceCriteria criteria = new AcceptanceCriteria();
         givenClauses.forEach(criteria::addGiven);
         whenClauses.forEach(criteria::addWhen);

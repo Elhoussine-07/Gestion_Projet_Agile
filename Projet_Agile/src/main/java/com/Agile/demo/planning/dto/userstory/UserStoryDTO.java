@@ -9,14 +9,13 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserStoryDTO {
-    private Long id;
+    private Integer id;
     private String title;
     private String formattedDescription;
     private String role;
@@ -46,8 +45,9 @@ public class UserStoryDTO {
     private Map<String, Integer> customMetrics;
 
     public static UserStoryDTO fromEntity(UserStory story) {
+        // ✅ CORRECTION 1: Créer le builder correctement sans appeler toutes les méthodes à la fin
         UserStoryDTOBuilder builder = UserStoryDTO.builder()
-                .id(story.getId())
+                .id(story.getId() != null ? Math.toIntExact(story.getId()) : null)
                 .title(story.getTitle())
                 .formattedDescription(story.getFormattedDescription())
                 .storyPoints(story.getStoryPoints())
@@ -55,14 +55,15 @@ public class UserStoryDTO {
                 .status(story.getStatus())
                 .productBacklogId(story.getProductBacklog() != null ?
                         story.getProductBacklog().getId() : null)
+                // ✅ CORRECTION 2: Gérer le null correctement pour sprintBacklogId
                 .sprintBacklogId(story.getSprintBacklog() != null ?
-                        story.getSprintBacklog().getId() : null)
+                        Long.valueOf(story.getSprintBacklog().getId()) : null)
                 .taskCount(story.getTasks() != null ? story.getTasks().size() : 0)
                 .progress(story.calculateProgress())
                 .isInSprint(story.isInSprint())
                 .isValid(story.isValid());
 
-        // Description
+        // ✅ CORRECTION 3: Déplacer la logique de Description en dehors du builder initial
         if (story.getDescription() != null) {
             builder.role(story.getDescription().getRole())
                     .action(story.getDescription().getAction())
@@ -85,7 +86,7 @@ public class UserStoryDTO {
             long completed = story.getTasks().stream()
                     .filter(t -> t.getStatus() == WorkItemStatus.DONE)
                     .count();
-            builder.completedTaskCount((int)completed);
+            builder.completedTaskCount((int) completed);
         }
 
         // Acceptance Criteria

@@ -2,6 +2,7 @@ package com.Agile.demo.execution.repositories;
 
 import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
+import com.Agile.demo.model.WorkItemStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,7 +36,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findAvailableUsersByRole(@Param("role") Role role, @Param("maxTasks") long maxTasks);
 
     @Query("SELECT COUNT(t) FROM Task t WHERE t.assignedUser.id = :userId AND t.status = :status")
-    long countTasksByUserAndStatus(@Param("userId") Long userId, @Param("status") String status);
+    long countTasksByUserAndStatus(@Param("userId") Long userId, @Param("status") WorkItemStatus status);
 
 
     List<User> findByIsActiveTrue();

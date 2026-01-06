@@ -30,11 +30,11 @@ public class SprintController {
                 request.getSprintNumber(),
                 request.getStartDate(),
                 request.getEndDate(),
-                request.getGoal()
+                request.getGoal(),
+                request.getUserStoryIds()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(sprint);
     }
-
 
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<SprintBacklog>> getSprintsByProject(@PathVariable Long projectId) {
@@ -42,20 +42,17 @@ public class SprintController {
         return ResponseEntity.ok(sprints);
     }
 
-
     @GetMapping("/project/{projectId}/active")
     public ResponseEntity<SprintBacklog> getActiveSprint(@PathVariable Long projectId) {
         SprintBacklog sprint = sprintService.getActiveSprint(projectId);
         return ResponseEntity.ok(sprint);
     }
 
-
     @GetMapping("/{sprintId}")
     public ResponseEntity<SprintBacklog> getSprintById(@PathVariable Long sprintId) {
         SprintBacklog sprint = sprintService.getSprintById(sprintId);
         return ResponseEntity.ok(sprint);
     }
-
 
     @PutMapping("/{sprintId}")
     public ResponseEntity<SprintBacklog> updateSprint(
@@ -71,13 +68,11 @@ public class SprintController {
         return ResponseEntity.ok(sprint);
     }
 
-
     @PostMapping("/{sprintId}/start")
     public ResponseEntity<SprintBacklog> startSprint(@PathVariable Long sprintId) {
         SprintBacklog sprint = sprintService.startSprint(sprintId);
         return ResponseEntity.ok(sprint);
     }
-
 
     @PostMapping("/{sprintId}/complete")
     public ResponseEntity<SprintBacklog> completeSprint(@PathVariable Long sprintId) {
@@ -85,13 +80,11 @@ public class SprintController {
         return ResponseEntity.ok(sprint);
     }
 
-
     @PostMapping("/{sprintId}/cancel")
     public ResponseEntity<SprintBacklog> cancelSprint(@PathVariable Long sprintId) {
         SprintBacklog sprint = sprintService.cancelSprint(sprintId);
         return ResponseEntity.ok(sprint);
     }
-
 
     @DeleteMapping("/{sprintId}")
     public ResponseEntity<Void> deleteSprint(@PathVariable Long sprintId) {
@@ -100,19 +93,42 @@ public class SprintController {
     }
 
 
+    @PostMapping("/{sprintId}/user-stories/{userStoryId}")
+    public ResponseEntity<SprintBacklog> addUserStoryToSprint(
+            @PathVariable Long sprintId,
+            @PathVariable Long userStoryId) {
+        SprintBacklog sprint = sprintService.addUserStoryToSprint(sprintId, userStoryId);
+        return ResponseEntity.ok(sprint);
+    }
+
+    @PostMapping("/{sprintId}/user-stories/batch")
+    public ResponseEntity<SprintBacklog> addMultipleUserStoriesToSprint(
+            @PathVariable Long sprintId,
+            @RequestBody List<Long> userStoryIds) {
+        SprintBacklog sprint = sprintService.addMultipleUserStoriesToSprint(sprintId, userStoryIds);
+        return ResponseEntity.ok(sprint);
+    }
+
+    // NOUVEL ENDPOINT: Retirer une User Story d'un Sprint
+    @DeleteMapping("/{sprintId}/user-stories/{userStoryId}")
+    public ResponseEntity<SprintBacklog> removeUserStoryFromSprint(
+            @PathVariable Long sprintId,
+            @PathVariable Long userStoryId) {
+        SprintBacklog sprint = sprintService.removeUserStoryFromSprint(sprintId, userStoryId);
+        return ResponseEntity.ok(sprint);
+    }
+
     @GetMapping("/{sprintId}/metrics")
     public ResponseEntity<SprintService.SprintMetrics> getSprintMetrics(@PathVariable Long sprintId) {
         SprintService.SprintMetrics metrics = sprintService.getSprintMetrics(sprintId);
         return ResponseEntity.ok(metrics);
     }
 
-
     @GetMapping("/project/{projectId}/last")
     public ResponseEntity<SprintBacklog> getLastSprint(@PathVariable Long projectId) {
         SprintBacklog sprint = sprintService.getLastSprint(projectId);
         return ResponseEntity.ok(sprint);
     }
-
 
     @GetMapping("/project/{projectId}/status/{status}")
     public ResponseEntity<List<SprintBacklog>> getSprintsByStatus(
@@ -123,13 +139,11 @@ public class SprintController {
         return ResponseEntity.ok(sprints);
     }
 
-
     @GetMapping("/{sprintId}/can-start")
     public ResponseEntity<Boolean> canStartSprint(@PathVariable Long sprintId) {
         boolean canStart = sprintService.canStartSprint(sprintId);
         return ResponseEntity.ok(canStart);
     }
-
 
     @GetMapping("/project/{projectId}/between-dates")
     public ResponseEntity<List<SprintBacklog>> getSprintsBetweenDates(
@@ -141,7 +155,6 @@ public class SprintController {
         return ResponseEntity.ok(sprints);
     }
 
-
     @PostMapping("/{fromSprintId}/move-story/{userStoryId}/to/{toSprintId}")
     public ResponseEntity<Void> moveUserStoryBetweenSprints(
             @PathVariable("fromSprintId") Long fromSprintId,
@@ -152,21 +165,17 @@ public class SprintController {
         return ResponseEntity.ok().build();
     }
 
-
-
     @GetMapping("/{sprintId}/burndown")
     public ResponseEntity<SprintService.SprintBurndown> getSprintBurndown(@PathVariable Long sprintId) {
         SprintService.SprintBurndown burndown = sprintService.getSprintBurndown(sprintId);
         return ResponseEntity.ok(burndown);
     }
 
-
     @GetMapping("/project/{projectId}/incomplete-stories")
     public ResponseEntity<List<SprintBacklog>> getSprintsWithIncompleteStories(@PathVariable Long projectId) {
         List<SprintBacklog> sprints = sprintService.getSprintsWithIncompleteStories(projectId);
         return ResponseEntity.ok(sprints);
     }
-
 
     @PostMapping("/{sprintId}/clone")
     public ResponseEntity<SprintBacklog> cloneSprint(
@@ -182,7 +191,6 @@ public class SprintController {
         return ResponseEntity.status(HttpStatus.CREATED).body(sprint);
     }
 
-
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(ex.getMessage());
@@ -193,3 +201,6 @@ public class SprintController {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }
+
+
+//dyal db

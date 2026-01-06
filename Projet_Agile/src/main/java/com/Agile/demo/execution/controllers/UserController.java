@@ -30,8 +30,12 @@ public class UserController {
                 request.getUsername(),
                 request.getEmail(),
                 request.getPassword(),
-                request.getRole()
+                request.getRole(),
+                request.getFirstName(),
+                request.getLastName(),
+                request.getPhoneNumber()
         );
+
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
@@ -76,19 +80,26 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-
-    @PutMapping("/{userId}")
-    public ResponseEntity<User> updateUser(@PathVariable Long userId, @RequestBody UserUpdateRequest request) {
-        User user = userService.updateUser(userId, request.getEmail(), request.getRole());
-        return ResponseEntity.ok(user);
-    }
-
-
     @PutMapping("/{userId}/password")
     public ResponseEntity<User> updatePassword(@PathVariable Long userId, @RequestBody PasswordUpdateRequest request) {
         User user = userService.updatePassword(userId, request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.ok(user);
     }
+
+    @PutMapping("/{userId}")
+    public ResponseEntity<User> updateUser(@PathVariable Long userId, @RequestBody UserUpdateRequest request) {
+        User user = userService.updateUser(
+                userId,
+                request.getEmail(),
+                request.getRole(),
+                request.getFirstName(),
+                request.getLastName(),
+                request.getPhoneNumber(),
+                request.getIsActive()
+        );
+        return ResponseEntity.ok(user);
+    }
+
 
 
     @DeleteMapping("/{userId}")
