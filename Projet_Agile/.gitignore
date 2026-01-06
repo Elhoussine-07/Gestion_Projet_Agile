@@ -2,6 +2,10 @@
 .idea/
 *.iml
 
+# Fichiers hors projet accidentels
+../Spring seurité/
+../README.md
+
 # Compiled classes
 target/
 
