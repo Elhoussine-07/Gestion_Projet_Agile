@@ -29,11 +29,7 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    // ===== NOUVEAUX CHAMPS À AJOUTER =====
 
-    /**
-     * Indique si l'utilisateur est actif
-     */
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
     public void setisActive(Boolean isActive) {
@@ -41,31 +37,22 @@ public class User {
     }
 
 
-    /**
-     * Prénom de l'utilisateur
-     */
     @Column(name = "first_name", length = 50)
     private String firstName;
 
-    /**
-     * Nom de famille de l'utilisateur
-     */
+
     @Column(name = "last_name", length = 50)
     private String lastName;
 
-    /**
-     * Numéro de téléphone
-     */
+
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
 
-    /**
-     * Indique si un changement de mot de passe est requis
-     */
+
     @Column(name = "password_reset_required", nullable = false)
     private boolean passwordResetRequired = false;
 
-    // ===== RELATIONS (INCHANGÉES) =====
+
 
     @ManyToMany(mappedBy = "members", fetch = FetchType.LAZY)
     private List<Project> projects = new ArrayList<>();
@@ -73,11 +60,7 @@ public class User {
     @OneToMany(mappedBy = "assignedUser", fetch = FetchType.LAZY)
     private List<Task> assignedTasks = new ArrayList<>();
 
-    // ===== MÉTHODES UTILITAIRES =====
 
-    /**
-     * Retourne le nom complet de l'utilisateur
-     */
     public String getFullName() {
         if (firstName != null && lastName != null) {
             return firstName + " " + lastName;
@@ -89,9 +72,7 @@ public class User {
         return username;
     }
 
-    /**
-     * Vérifie si l'utilisateur a un profil complet
-     */
+
     public boolean hasCompleteProfile() {
         return firstName != null && !firstName.trim().isEmpty() &&
                 lastName != null && !lastName.trim().isEmpty() &&
