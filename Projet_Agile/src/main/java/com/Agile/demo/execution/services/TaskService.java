@@ -499,7 +499,7 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public List<Task> getBlockedTasks(Integer sprintId) {
-        return taskRepository.findBySprintBacklogIdAndBlocked(sprintId, true);
+        return taskRepository.findBySprintBacklogIdAndIsBlocked(sprintId, true);
     }
 
     @Transactional(readOnly = true)

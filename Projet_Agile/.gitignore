@@ -2,14 +2,13 @@
 .idea/
 *.iml
 
-# Fichiers hors projet accidentels
-../Spring seurité/
-../README.md
+# Fichiers hors projet
+Spring sécurité/
+README.md
 
-# Compiled classes
+# Build
 target/
 
 # Logs
 *.log
-target/
-.idea/
+
