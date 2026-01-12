@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/epics")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*") //autorise toutes les origines à appeler mon endpoint(dangereuse en prod)
 public class EpicController {
 
     private final EpicService epicService;

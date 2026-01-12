@@ -101,6 +101,9 @@ public class Task extends AbstractWorkItem {
         return this.assignedUser != null;
     }
 
+    public boolean isBlocked() {return isBlocked; }
+
+
     // ===== MÉTHODES MÉTIER =====
 
     public void logHours(int hours) {
