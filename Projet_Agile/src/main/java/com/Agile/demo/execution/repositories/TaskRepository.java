@@ -37,7 +37,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     // ==================== BLOCKED TASKS ====================
 
-    List<Task> findBySprintBacklogIdAndBlocked(Integer sprintBacklogId, boolean blocked);
+    List<Task> findBySprintBacklogIdAndIsBlocked(Integer sprintBacklogId, boolean blocked);
 
     List<Task> findBySprintBacklogIdAndIsBlockedTrue(Integer sprintBacklogId);
 
@@ -63,7 +63,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("SELECT t FROM Task t WHERE t.sprintBacklog.sprintNumber = :sprintNumber " +
             "AND t.status != com.Agile.demo.model.WorkItemStatus.DONE " +
-            "AND (t.blocked = true OR t.actualHours > t.estimatedHours * 1.5)")
+            "AND (t.blockReason IS NOT NULL OR t.actualHours > t.estimatedHours * 1.5)")
     List<Task> findCriticalTasks(@Param("sprintNumber") Integer sprintNumber);
 
     // ==================== RECENTLY COMPLETED TASKS ====================
