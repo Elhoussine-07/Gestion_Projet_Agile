@@ -1,6 +1,6 @@
-package com.agile.demo.planning.repository;
+package com.Agile.demo.planning.repository;
 
-import com.agile.demo.model.Project;
+import com.Agile.demo.model.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

@@ -1,4 +1,4 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
 public enum SprintStatus {
     PLANNED("Planifié"),
@@ -34,7 +34,6 @@ public enum SprintStatus {
                 return newStatus == COMPLETED || newStatus == CANCELLED;
             case COMPLETED:
             case CANCELLED:
-                return false;
             default:
                 return false;
         }

@@ -1,18 +1,15 @@
-package com.agile.demo.planning.service;
+package com.Agile.demo.planning.service;
 
-import com.agile.demo.model.Project;
-import com.agile.demo.planning.repository.ProjectRepository;
-import com.agile.demo.common.exception.ResourceNotFoundException;
-import com.agile.demo.common.exception.BusinessException;
+import com.Agile.demo.model.Project;
+import com.Agile.demo.planning.repository.ProjectRepository;
+import com.Agile.demo.common.exception.ResourceNotFoundException;
+import com.Agile.demo.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
-
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.List;
@@ -34,9 +31,15 @@ class ProjectServiceTest {
 
     @BeforeEach
     void setUp() {
-        project = new Project("Test Project", "Description",
-                LocalDate.now(), LocalDate.now().plusMonths(3));
+        project = Project.builder()
+                .name("Test Project")
+                .description("Description")
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(3))
+                .build();
+
         project.setId(1L);
+
     }
 
     @Test

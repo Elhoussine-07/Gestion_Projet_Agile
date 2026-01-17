@@ -1,6 +1,5 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
-import com.agile.demo.planning.prioritization.PrioritizationStrategyFactory;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +22,9 @@ public class ProductBacklog {
     @Column(unique = true)
     private String name;
 
+    @Column(name = "total_business_value")
+    private Integer totalBusinessValue = 0;
+
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Project project;
@@ -40,16 +42,9 @@ public class ProductBacklog {
     @Transient
     private IPrioritizationStrategy prioritizationStrategy;
 
-    public void applyPrioritization() {
-        // 1. Injecter la stratégie selon la méthode choisie
-        this.prioritizationStrategy = PrioritizationStrategyFactory
-                .getStrategy(selectedMethod);
-
-        // 2. Calculer et attribuer les priorités
-        List<UserStory> sorted = prioritizationStrategy.prioritizeBacklog(stories);
-
-        for (int i = 0; i < sorted.size(); i++) {
-            sorted.get(i).setPriority(i + 1);
+    public void applyPriorities(List<UserStory> sortedStories) {
+        for (int i = 0; i < sortedStories.size(); i++) {
+            sortedStories.get(i).setPriority(i + 1);
         }
     }
 

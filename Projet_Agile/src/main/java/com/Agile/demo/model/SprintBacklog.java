@@ -1,9 +1,12 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,8 +23,6 @@ public class SprintBacklog extends AbstractBacklog {
     private Long id;
 
     @Column(nullable = false)
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer sprintNumber;
 
     @Column(nullable = false)
@@ -32,6 +33,9 @@ public class SprintBacklog extends AbstractBacklog {
 
     @Column(length = 500)
     private String goal;
+
+    @Column(name="capacity")
+    private Integer capacity=0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -168,7 +172,7 @@ public class SprintBacklog extends AbstractBacklog {
      * Obtient la durée du sprint en jours
      */
     public long getSprintDuration() {
-        return java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
+        return ChronoUnit.DAYS.between(startDate, endDate);
     }
 
     @Override
@@ -212,5 +216,6 @@ public class SprintBacklog extends AbstractBacklog {
     public void setsprintNumber(long l) {
         this.sprintNumber = Math.toIntExact(l);
     }
+
 
 }

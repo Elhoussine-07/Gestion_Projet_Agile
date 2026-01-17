@@ -2,8 +2,13 @@
 .idea/
 *.iml
 
-# Compiled classes
+# Fichiers hors projet
+Spring sécurité/
+README.md
+
+# Build
 target/
 
 # Logs
 *.log
+

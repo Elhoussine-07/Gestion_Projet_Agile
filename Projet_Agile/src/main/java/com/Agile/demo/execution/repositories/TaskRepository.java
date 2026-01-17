@@ -7,61 +7,81 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    /**
-     * Trouve toutes les tâches d'une User Story
-     */
+    // ==================== BASIC QUERIES ====================
+
     List<Task> findByUserStoryId(Long userStoryId);
 
-    /**
-     * Trouve toutes les tâches d'un Sprint Backlog
-     */
-    List<Task> findBySprintBacklogId(Long sprintBacklogId);
+    List<Task> findBySprintBacklogId(Integer sprintBacklogId);
 
-    /**
-     * Trouve toutes les tâches assignées à un utilisateur
-     */
     List<Task> findByAssignedUserId(Long userId);
 
-    /**
-     * Trouve les tâches assignées à un utilisateur avec un statut spécifique
-     */
     List<Task> findByAssignedUserIdAndStatus(Long userId, WorkItemStatus status);
 
-    /**
-     * Trouve les tâches non assignées d'un sprint
-     */
-    List<Task> findBySprintBacklogIdAndAssignedUserIsNull(Long sprintBacklogId);
-
-    /**
-     * Trouve les tâches par statut dans un sprint
-     */
     List<Task> findBySprintBacklogIdAndStatus(Long sprintBacklogId, WorkItemStatus status);
 
-    /**
-     * Calcule le total des heures estimées pour une User Story
-     */
+    List<Task> findByAssignedUserIdAndSprintBacklogId(Long userId, Long sprintBacklogId);
+
+    // ==================== NULL/NOT NULL QUERIES ====================
+
+    List<Task> findBySprintBacklogIdAndAssignedUserIsNull(Long sprintBacklogId);
+
+    List<Task> findByAssignedUserIdAndStatusNot(Long userId, WorkItemStatus status);
+
+    List<Task> findBySprintBacklogIdAndStatusNot(Long sprintBacklogId, WorkItemStatus status);
+
+    // ==================== BLOCKED TASKS ====================
+
+    List<Task> findBySprintBacklogIdAndIsBlocked(Integer sprintBacklogId, boolean blocked);
+
+    List<Task> findBySprintBacklogIdAndIsBlockedTrue(Integer sprintBacklogId);
+
+    // ==================== AGGREGATION QUERIES ====================
+
     @Query("SELECT COALESCE(SUM(t.estimatedHours), 0) FROM Task t WHERE t.userStory.id = :userStoryId")
     Integer getTotalEstimatedHoursByUserStory(@Param("userStoryId") Long userStoryId);
 
-    /**
-     * Calcule le total des heures réelles pour une User Story
-     */
     @Query("SELECT COALESCE(SUM(t.actualHours), 0) FROM Task t WHERE t.userStory.id = :userStoryId")
     Integer getTotalActualHoursByUserStory(@Param("userStoryId") Long userStoryId);
 
-    /**
-     * Compte les tâches complétées d'une User Story
-     */
     long countByUserStoryIdAndStatus(Long userStoryId, WorkItemStatus status);
 
-    /**
-     * Trouve les tâches en retard (heures réelles > heures estimées)
-     */
+    // ==================== OVER ESTIMATED TASKS ====================
+
     @Query("SELECT t FROM Task t WHERE t.sprintBacklog.id = :sprintBacklogId AND t.actualHours > t.estimatedHours")
     List<Task> findOverEstimatedTasksBySprint(@Param("sprintBacklogId") Long sprintBacklogId);
+
+    @Query("SELECT t FROM Task t WHERE t.sprintBacklog.id = :sprintBacklogId AND t.actualHours > t.estimatedHours * 1.2")
+    List<Task> findTasksExceedingEstimate(@Param("sprintBacklogId") Integer sprintBacklogId);
+
+    // ==================== CRITICAL TASKS ====================
+
+    @Query("SELECT t FROM Task t WHERE t.sprintBacklog.sprintNumber = :sprintNumber " +
+            "AND t.status != com.Agile.demo.model.WorkItemStatus.DONE " +
+            "AND (t.isBlocked = true OR t.actualHours > t.estimatedHours * 1.5)")
+    List<Task> findCriticalTasks(@Param("sprintNumber") Integer sprintNumber);
+
+    // ==================== RECENTLY COMPLETED TASKS ====================
+
+    @Query("SELECT t FROM Task t WHERE t.sprintBacklog.id = :sprintBacklogId " +
+            "AND t.status = com.Agile.demo.model.WorkItemStatus.DONE " +
+            "AND t.completedDate >= :sinceDate")
+    List<Task> findRecentlyCompletedTasks(
+            @Param("sprintBacklogId") Integer sprintBacklogId,
+            @Param("sinceDate") LocalDate sinceDate
+    );
+
+    default List<Task> findRecentlyCompletedTasks(Integer sprintBacklogId, int days) {
+        LocalDate sinceDate = LocalDate.now().minusDays(days);
+        return findRecentlyCompletedTasks(sprintBacklogId, sinceDate);
+    }
+
+    // Alternative avec status et date (pour compatibilité avec l'ancien code)
+    List<Task> findBySprintBacklogIdAndStatusAndCompletedDateAfter(
+            Integer sprintBacklogId, WorkItemStatus status, LocalDate date);
 }

@@ -1,14 +1,14 @@
-package com.agile.demo.planning.prioritization;
+package com.Agile.demo.planning.prioritization;
 
-import com.agile.demo.model.IPrioritizationStrategy;
-import com.agile.demo.model.UserStory;
+import com.Agile.demo.model.IPrioritizationStrategy;
+import com.Agile.demo.model.UserStory;
 
 public class MoSCowStrategy implements IPrioritizationStrategy {
     @Override
     public int calculatePriority(UserStory story) {
         // Basé sur des critères métier (valeur, urgence, dépendances)
-        int businessValue = story.getBusinessValue();  // 1-10
-        int urgency = story.getUrgency();              // 1-10
+        int businessValue = story.getMetric("businessValue");  // 1-10
+        int urgency = story.getMetric("urgency");              // 1-10
         int dependencies = story.getDependencies().size();
 
         // Formule de score

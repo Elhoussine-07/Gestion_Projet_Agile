@@ -1,13 +1,14 @@
-package com.agile.demo.planning.service;
+package com.Agile.demo.planning.service;
 
-import com.agile.demo.common.exception.BusinessException;
-import com.agile.demo.common.exception.ResourceNotFoundException;
-import com.agile.demo.model.Epic;
-import com.agile.demo.model.ProductBacklog;
-import com.agile.demo.model.UserStory;
-import com.agile.demo.planning.repository.EpicRepository;
-import com.agile.demo.planning.repository.ProductBacklogRepository;
-import com.agile.demo.planning.repository.UserStoryRepository;
+import com.Agile.demo.common.exception.BusinessException;
+import com.Agile.demo.common.exception.ResourceNotFoundException;
+import com.Agile.demo.model.Epic;
+import com.Agile.demo.model.ProductBacklog;
+import com.Agile.demo.model.UserStory;
+import com.Agile.demo.model.WorkItemStatus;
+import com.Agile.demo.planning.repository.EpicRepository;
+import com.Agile.demo.planning.repository.ProductBacklogRepository;
+import com.Agile.demo.planning.repository.UserStoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -99,4 +100,42 @@ public class EpicService {
         story.setEpic(epic);
         userStoryRepository.save(story);
     }
+
+    @Transactional
+    public void removeUserStoryFromEpic(Long epicId, Long storyId) {
+        Epic epic = getEpicById(epicId);
+
+        UserStory story = userStoryRepository.findById(storyId)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", storyId));
+
+        if (story.getEpic() == null || !story.getEpic().getId().equals(epic.getId())) {
+            throw new BusinessException("User story is not assigned to this epic");
+        }
+
+        // Suppression de l'association
+        story.setEpic(null);
+        userStoryRepository.save(story);
+    }
+    @Transactional(readOnly = true)
+    public int calculateEpicProgress(Long epicId) {
+        Epic epic = getEpicById(epicId);
+
+        List<UserStory> stories = epic.getUserStories();
+
+        if (stories == null || stories.isEmpty()) {
+            return 0;
+        }
+
+        long doneCount = stories.stream()
+                .filter(story -> story.getStatus() == WorkItemStatus.DONE)
+                .count();
+
+        return (int) ((doneCount * 100) / stories.size());
+    }
+
+
+    public List<Epic> getAllEpics() {
+        return epicRepository.findAll();
+    }
+
 }

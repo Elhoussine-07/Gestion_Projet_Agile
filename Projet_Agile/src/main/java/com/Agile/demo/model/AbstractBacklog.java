@@ -1,6 +1,5 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
-import com.Agile.demo.model.AbstractWorkItem;
 import jakarta.persistence.MappedSuperclass;
 
 import java.util.List;
@@ -20,6 +19,9 @@ public abstract class AbstractBacklog {
     }
 
     public abstract void addItem(AbstractWorkItem item);
+
+    public abstract void removeItem(AbstractWorkItem item);
+
     public abstract List<? extends AbstractWorkItem> getItems();
 
     public String getName() {

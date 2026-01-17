@@ -1,9 +1,6 @@
-package com.agile.demo.model;
+package com.Agile.demo.model;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -15,6 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "projects")
+@Builder
 public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,6 +31,7 @@ public class Project {
     @JoinColumn(name = "product_backlog_id")
     private ProductBacklog productBacklog;
 
+    @Builder.Default
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SprintBacklog> sprints = new ArrayList<>();
 
@@ -42,17 +41,17 @@ public class Project {
             joinColumns = @JoinColumn(name = "project_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @Builder.Default
     private List<User> members = new ArrayList<>();
 
-    // Constructeur personnalisé sans l'ID (généré automatiquement)
-    public Project(String name, String description, LocalDate startDate, LocalDate endDate) {
-        this.name = name;
-        this.description = description;
-        this.startDate = startDate;
-        this.endDate = endDate;
-        this.productBacklog = new ProductBacklog();
-        this.sprints = new ArrayList<>();
-        this.members = new ArrayList<>();
+    // Créer automatiquement le productBacklog
+    @PrePersist
+    protected void onCreate() {
+        if (this.productBacklog == null) {
+            this.productBacklog = new ProductBacklog();
+            this.productBacklog.setName(this.name + " - Product Backlog");
+            this.productBacklog.setProject(this);
+        }
     }
 
     // Méthodes utilitaires pour maintenir la cohérence des relations

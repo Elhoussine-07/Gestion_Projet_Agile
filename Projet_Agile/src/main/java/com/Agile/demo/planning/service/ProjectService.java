@@ -1,10 +1,11 @@
-package com.agile.demo.planning.service;
+package com.Agile.demo.planning.service;
 
-import com.agile.demo.model.Project;
-import com.agile.demo.model.User;
-import com.agile.demo.planning.repository.ProjectRepository;
-import com.agile.demo.common.exception.ResourceNotFoundException;
-import com.agile.demo.common.exception.BusinessException;
+import com.Agile.demo.execution.repositories.UserRepository;
+import com.Agile.demo.model.Project;
+import com.Agile.demo.model.User;
+import com.Agile.demo.planning.repository.ProjectRepository;
+import com.Agile.demo.common.exception.ResourceNotFoundException;
+import com.Agile.demo.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.util.List;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final UserRepository userRepository;
 
     /**
      * Crée un nouveau projet
@@ -39,9 +41,13 @@ public class ProjectService {
         }
 
         // Création
-        Project project = new Project(name, description, startDate, endDate);
-
-        // Le ProductBacklog est créé automatiquement dans le constructeur
+        Project project = Project.builder()
+                .name(name)
+                .description(description)
+                .startDate(startDate)
+                .endDate(endDate)
+                .build();
+        // Le ProductBacklog est créé automatiquement
 
         Project saved = projectRepository.save(project);
         log.info("Project created with id: {}", saved.getId());
@@ -119,10 +125,12 @@ public class ProjectService {
      * Ajoute un membre au projet
      */
     @Transactional
-    public void addMemberToProject(Long projectId, User user) {
-        log.info("Adding user {} to project {}", user.getId(), projectId);
+    public void addMemberToProject(Long projectId, Long userId) {
+        log.info("Adding user {} to project {}", userId, projectId);
 
         Project project = getProjectById(projectId);
+        User user= userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User",userId));
 
         if (project.getMembers().contains(user)) {
             throw new BusinessException("User is already a member of this project");
@@ -136,10 +144,12 @@ public class ProjectService {
      * Retire un membre du projet
      */
     @Transactional
-    public void removeMemberFromProject(Long projectId, User user) {
-        log.info("Removing user {} from project {}", user.getId(), projectId);
+    public void removeMemberFromProject(Long projectId, Long userId) {
+        log.info("Removing user {} from project {}", userId, projectId);
 
         Project project = getProjectById(projectId);
+        User user=userRepository.findById(userId)
+                .orElseThrow(()->new ResourceNotFoundException("User",userId));
         project.removeMember(user);
         projectRepository.save(project);
     }

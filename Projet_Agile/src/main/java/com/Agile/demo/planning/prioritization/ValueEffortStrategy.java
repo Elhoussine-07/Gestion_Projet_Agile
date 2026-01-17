@@ -1,13 +1,13 @@
-package com.agile.demo.planning.prioritization;
+package com.Agile.demo.planning.prioritization;
 
-import com.agile.demo.model.IPrioritizationStrategy;
-import com.agile.demo.model.UserStory;
+import com.Agile.demo.model.IPrioritizationStrategy;
+import com.Agile.demo.model.UserStory;
 
 public class ValueEffortStrategy implements IPrioritizationStrategy {
     @Override
     public int calculatePriority(UserStory story) {
         // Ratio simple : Value / Effort
-        int value = story.getBusinessValue();
+        int value = story.getMetric("value");
         int effort = story.getStoryPoints();
 
         if (effort == 0) effort = 1;
