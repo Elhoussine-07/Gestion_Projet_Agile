@@ -1,5 +1,6 @@
 package com.Agile.demo.planning.service;
 
+import com.Agile.demo.common.planningAspect.LogExecutionTime;
 import com.Agile.demo.common.exception.ResourceNotFoundException;
 import com.Agile.demo.common.exception.ValidationException;
 import com.Agile.demo.model.*;
@@ -26,6 +27,7 @@ public class ProductBacklogService {
     private final SprintBacklogRepository sprintRepository;
     private final PrioritizationStrategyProvider prioritizationStrategyProvider;
 
+    @LogExecutionTime(threshold = 200)
     public ProductBacklog getProductBacklogById(Long id) {
         return productBacklogRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog", id));
@@ -36,6 +38,7 @@ public class ProductBacklogService {
                 .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog for project " + projectId + " not found"));
     }
 
+    @LogExecutionTime(threshold = 500)
     public List<UserStory> getAllStories(Long backlogId) {
         return userStoryRepository.findByProductBacklogId(backlogId);
     }
@@ -57,6 +60,7 @@ public class ProductBacklogService {
      * @param method Méthode de priorisation (MOSCOW, WSJF, VALUE_EFFORT)
      */
     @Transactional
+    @LogExecutionTime(threshold = 1000)
     public void applyPrioritization(Long backlogId, PrioritizationMethod method) {
         log.info("Applying prioritization method {} to backlog {}", method, backlogId);
 

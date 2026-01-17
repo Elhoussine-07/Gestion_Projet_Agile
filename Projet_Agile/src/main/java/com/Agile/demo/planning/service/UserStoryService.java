@@ -1,5 +1,6 @@
 package com.Agile.demo.planning.service;
 
+import com.Agile.demo.common.planningAspect.LogExecutionTime;
 import com.Agile.demo.common.exception.ResourceNotFoundException;
 import com.Agile.demo.model.AcceptanceCriteria;
 import com.Agile.demo.model.ProductBacklog;
@@ -29,6 +30,7 @@ public class UserStoryService {
     // ===== CREATE =====
 
     @Transactional
+    @LogExecutionTime(threshold = 500)  // Warning si > 500ms
     public UserStory createUserStory(Long productBacklogId, String title,
                                      String role, String action, String purpose,
                                      Integer storyPoints) {
@@ -84,11 +86,13 @@ public class UserStoryService {
 
     // ===== READ =====
 
+    @LogExecutionTime(threshold = 100)
     public UserStory getUserStoryById(Long id) {
         return userStoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
     }
 
+    @LogExecutionTime(threshold = 200)
     public List<UserStory> getUserStoriesByProductBacklog(Long backlogId) {
         return userStoryRepository.findByProductBacklogId(backlogId);
     }
@@ -118,6 +122,7 @@ public class UserStoryService {
     // ===== UPDATE =====
 
     @Transactional
+    @LogExecutionTime(threshold = 300)
     public UserStory updateUserStory(Long id, String title, String role,
                                      String action, String purpose, Integer storyPoints) {
         UserStory story = getUserStoryById(id);
