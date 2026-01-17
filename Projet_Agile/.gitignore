@@ -1,15 +1,10 @@
-# IntelliJ IDEA project files
+# IntelliJ IDEA
 .idea/
 *.iml
 
-# Fichiers hors projet accidentels
-../Spring seurité/
-../README.md
-
-# Compiled classes
+# Maven
 target/
 
 # Logs
 *.log
-target/
-.idea/
+
