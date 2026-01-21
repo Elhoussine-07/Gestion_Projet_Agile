@@ -4,5 +4,5 @@ public enum Role {
     PRODUCT_OWNER,
     SCRUM_MASTER,
     DEVELOPER,
-    Tester
+    Tester  // ⚠️ Suggestion : renommer en "TESTER" pour cohérence
 }

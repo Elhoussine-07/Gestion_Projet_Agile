@@ -1,8 +1,9 @@
-package com.Agile.demo.security.dto;
+package com.Agile.demo.execution.dto;
 
 import com.Agile.demo.model.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,10 +16,9 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RegisterRequest {
+public class CreateUserRequest {
 
     @NotBlank(message = "Le nom d'utilisateur est obligatoire")
-    @Size(min = 3, max = 50, message = "Le nom d'utilisateur doit contenir entre 3 et 50 caractères")
     private String username;
 
     @NotBlank(message = "L'email est obligatoire")
@@ -29,9 +29,10 @@ public class RegisterRequest {
     @Size(min = 8, message = "Le mot de passe doit contenir au moins 8 caractères")
     private String password;
 
+    @NotEmpty(message = "Au moins un rôle est obligatoire")
+    private Set<Role> roles;
+
     private String firstName;
     private String lastName;
-    @Deprecated
-    private Role role;
-    private Set<Role> roles;
+    private String phoneNumber;
 }
