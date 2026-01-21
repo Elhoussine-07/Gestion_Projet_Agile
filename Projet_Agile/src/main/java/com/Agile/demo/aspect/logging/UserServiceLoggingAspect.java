@@ -8,61 +8,42 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
-/**
- * Aspect de logging spécifique pour UserService
- * Gère la journalisation des opérations de gestion des utilisateurs
- */
+
 @Aspect
 @Component
 @Slf4j
 public class UserServiceLoggingAspect {
 
-    /**
-     * Pointcut pour toutes les méthodes publiques de UserService
-     */
+
     @Pointcut("execution(public * com.Agile.demo.execution.services.UserService.*(..))")
     public void userServiceMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de création d'utilisateur
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.UserService.create*(..))")
     public void createUserMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de mise à jour d'utilisateur
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.UserService.update*(..))")
     public void updateUserMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de suppression d'utilisateur
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.UserService.delete*(..))")
     public void deleteUserMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de lecture d'utilisateur
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.UserService.get*(..))")
     public void getUserMethods() {}
 
-    /**
-     * Pointcut pour les opérations d'activation/désactivation
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.UserService.activateUser(..)) || " +
             "execution(* com.Agile.demo.execution.services.UserService.deactivateUser(..))")
     public void userActivationMethods() {}
 
-    /**
-     * Pointcut pour les opérations de mot de passe
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.UserService.*Password(..))")
     public void passwordMethods() {}
 
-    /**
-     * Log avant l'exécution de toute méthode de UserService
-     */
+
     @Before("userServiceMethods()")
     public void logBeforeUserMethod(JoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();
@@ -75,9 +56,7 @@ public class UserServiceLoggingAspect {
                 methodName, Arrays.toString(sanitizedArgs));
     }
 
-    /**
-     * Log après l'exécution réussie d'une méthode de UserService
-     */
+
     @AfterReturning(pointcut = "userServiceMethods()", returning = "result")
     public void logAfterReturningUserMethod(JoinPoint joinPoint, Object result) {
         String methodName = joinPoint.getSignature().getName();
@@ -86,9 +65,7 @@ public class UserServiceLoggingAspect {
                 methodName, result);
     }
 
-    /**
-     * Log en cas d'exception dans UserService
-     */
+
     @AfterThrowing(pointcut = "userServiceMethods()", throwing = "exception")
     public void logAfterThrowingUserMethod(JoinPoint joinPoint, Throwable exception) {
         String methodName = joinPoint.getSignature().getName();
@@ -100,9 +77,7 @@ public class UserServiceLoggingAspect {
                 exception.getClass().getSimpleName(), exception.getMessage());
     }
 
-    /**
-     * Log détaillé pour la création d'utilisateurs
-     */
+
     @Around("createUserMethods()")
     public Object logAroundCreateUser(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -127,9 +102,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log détaillé pour la mise à jour d'utilisateurs
-     */
+
     @Around("updateUserMethods()")
     public Object logAroundUpdateUser(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -152,9 +125,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log détaillé pour la suppression d'utilisateurs
-     */
+
     @Around("deleteUserMethods()")
     public Object logAroundDeleteUser(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -175,9 +146,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log optimisé pour les opérations de lecture
-     */
+
     @Around("getUserMethods()")
     public Object logAroundGetUser(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -195,9 +164,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les opérations d'activation/désactivation
-     */
+
     @Around("userActivationMethods()")
     public Object logAroundUserActivation(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -220,9 +187,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les opérations de mot de passe (avec sécurité renforcée)
-     */
+
     @Around("passwordMethods()")
     public Object logAroundPasswordOperations(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -232,7 +197,7 @@ public class UserServiceLoggingAspect {
 
         log.info("[USER-SERVICE] [PASSWORD] 🔐 Opération de mot de passe: {} pour utilisateur ID: {}",
                 methodName, userId);
-        // Ne JAMAIS logger les mots de passe réels
+
 
         try {
             Object result = joinPoint.proceed();
@@ -246,9 +211,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les statistiques et métriques utilisateur
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.UserService.*Statistics(..)) || " +
             "execution(* com.Agile.demo.execution.services.UserService.*Workload(..)) || " +
             "execution(* com.Agile.demo.execution.services.UserService.*Performance(..))")
@@ -267,9 +230,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les opérations de recherche
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.UserService.searchUsers(..)) || " +
             "execution(* com.Agile.demo.execution.services.UserService.getAvailable*(..))")
     public Object logAroundUserSearch(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -290,9 +251,7 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les vérifications d'existence
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.UserService.*Exists(..)) || " +
             "execution(* com.Agile.demo.execution.services.UserService.isUser*(..))")
     public Object logAroundUserValidation(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -309,18 +268,13 @@ public class UserServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log final après chaque exécution
-     */
     @After("userServiceMethods()")
     public void logAfterUserMethod(JoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();
         log.trace("[USER-SERVICE] --- Fin de {}", methodName);
     }
 
-    /**
-     * Méthode utilitaire pour masquer les informations sensibles dans les logs
-     */
+
     private Object[] sanitizeArgs(Object[] args, String methodName) {
         if (args == null || args.length == 0) {
             return args;

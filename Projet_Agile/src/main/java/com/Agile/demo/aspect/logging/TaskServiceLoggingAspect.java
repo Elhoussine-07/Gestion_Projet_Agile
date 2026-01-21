@@ -8,63 +8,42 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
-/**
- * Aspect de logging spécifique pour TaskService
- * Gère la journalisation des opérations de gestion des tâches
- */
 @Aspect
 @Component
 @Slf4j
 public class TaskServiceLoggingAspect {
 
-    /**
-     * Pointcut pour toutes les méthodes publiques de TaskService
-     */
+
     @Pointcut("execution(public * com.Agile.demo.execution.services.TaskService.*(..))")
     public void taskServiceMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de création de tâche
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.TaskService.create*(..))")
     public void createTaskMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de mise à jour de tâche
-     */
     @Pointcut("execution(* com.Agile.demo.execution.services.TaskService.update*(..))")
     public void updateTaskMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de suppression de tâche
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.TaskService.delete*(..))")
     public void deleteTaskMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de lecture de tâche
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.TaskService.get*(..))")
     public void getTaskMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de workflow de tâche
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.TaskService.startTask(..)) || " +
             "execution(* com.Agile.demo.execution.services.TaskService.completeTask*(..)) || " +
             "execution(* com.Agile.demo.execution.services.TaskService.moveTask*(..))")
     public void taskWorkflowMethods() {}
 
-    /**
-     * Pointcut pour les opérations de blocage/déblocage
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.TaskService.blockTask(..)) || " +
             "execution(* com.Agile.demo.execution.services.TaskService.unblockTask(..))")
     public void taskBlockingMethods() {}
 
-    /**
-     * Log avant l'exécution de toute méthode de TaskService
-     */
+
     @Before("taskServiceMethods()")
     public void logBeforeTaskMethod(JoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();
@@ -74,9 +53,7 @@ public class TaskServiceLoggingAspect {
                 methodName, Arrays.toString(args));
     }
 
-    /**
-     * Log après l'exécution réussie d'une méthode de TaskService
-     */
+
     @AfterReturning(pointcut = "taskServiceMethods()", returning = "result")
     public void logAfterReturningTaskMethod(JoinPoint joinPoint, Object result) {
         String methodName = joinPoint.getSignature().getName();
@@ -85,9 +62,7 @@ public class TaskServiceLoggingAspect {
                 methodName, result);
     }
 
-    /**
-     * Log en cas d'exception dans TaskService
-     */
+
     @AfterThrowing(pointcut = "taskServiceMethods()", throwing = "exception")
     public void logAfterThrowingTaskMethod(JoinPoint joinPoint, Throwable exception) {
         String methodName = joinPoint.getSignature().getName();
@@ -99,9 +74,7 @@ public class TaskServiceLoggingAspect {
                 exception.getClass().getSimpleName(), exception.getMessage());
     }
 
-    /**
-     * Log détaillé pour la création de tâches
-     */
+
     @Around("createTaskMethods()")
     public Object logAroundCreateTask(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -122,9 +95,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log détaillé pour la mise à jour de tâches
-     */
+
     @Around("updateTaskMethods()")
     public Object logAroundUpdateTask(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -144,9 +115,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log détaillé pour la suppression de tâches
-     */
+
     @Around("deleteTaskMethods()")
     public Object logAroundDeleteTask(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -166,9 +135,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log optimisé pour les opérations de lecture
-     */
+
     @Around("getTaskMethods()")
     public Object logAroundGetTask(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -186,9 +153,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log spécifique pour les opérations de workflow
-     */
+
     @Around("taskWorkflowMethods()")
     public Object logAroundTaskWorkflow(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -216,9 +181,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les opérations de blocage/déblocage
-     */
+
     @Around("taskBlockingMethods()")
     public Object logAroundTaskBlocking(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -245,9 +208,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour l'assignation/désassignation de tâches
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.TaskService.assignTask(..)) || " +
             "execution(* com.Agile.demo.execution.services.TaskService.unassignTask(..)) || " +
             "execution(* com.Agile.demo.execution.services.TaskService.reassignTask(..))")
@@ -275,9 +236,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour l'enregistrement des heures
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.TaskService.logHours(..))")
     public Object logAroundLogHours(ProceedingJoinPoint joinPoint) throws Throwable {
         Object[] args = joinPoint.getArgs();
@@ -297,9 +256,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les métriques et statistiques
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.TaskService.*Metrics(..)) || " +
             "execution(* com.Agile.demo.execution.services.TaskService.*Statistics(..))")
     public Object logAroundTaskMetrics(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -317,9 +274,7 @@ public class TaskServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log final après chaque exécution
-     */
+
     @After("taskServiceMethods()")
     public void logAfterTaskMethod(JoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();

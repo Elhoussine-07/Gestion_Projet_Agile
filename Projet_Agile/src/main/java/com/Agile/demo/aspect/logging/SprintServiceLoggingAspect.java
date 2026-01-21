@@ -14,47 +14,31 @@ import java.util.Arrays;
 @Slf4j
 public class SprintServiceLoggingAspect {
 
-    /**
-     * Pointcut pour toutes les méthodes publiques de SprintService
-     */
     @Pointcut("execution(public * com.Agile.demo.execution.services.SprintService.*(..))")
     public void sprintServiceMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de création de sprint
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.SprintService.create*(..))")
     public void createSprintMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de mise à jour de sprint
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.SprintService.update*(..))")
     public void updateSprintMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de suppression de sprint
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.SprintService.delete*(..))")
     public void deleteSprintMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de lecture de sprint
-     */
     @Pointcut("execution(* com.Agile.demo.execution.services.SprintService.get*(..))")
     public void getSprintMethods() {}
 
-    /**
-     * Pointcut pour les méthodes de workflow de sprint (start, complete, cancel)
-     */
+
     @Pointcut("execution(* com.Agile.demo.execution.services.SprintService.startSprint(..)) || " +
             "execution(* com.Agile.demo.execution.services.SprintService.completeSprint(..)) || " +
             "execution(* com.Agile.demo.execution.services.SprintService.cancelSprint(..))")
     public void sprintWorkflowMethods() {}
 
-    /**
-     * Log avant l'exécution de toute méthode de SprintService
-     */
+
     @Before("sprintServiceMethods()")
     public void logBeforeSprintMethod(JoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();
@@ -64,9 +48,7 @@ public class SprintServiceLoggingAspect {
                 methodName, Arrays.toString(args));
     }
 
-    /**
-     * Log après l'exécution réussie d'une méthode de SprintService
-     */
+
     @AfterReturning(pointcut = "sprintServiceMethods()", returning = "result")
     public void logAfterReturningSprintMethod(JoinPoint joinPoint, Object result) {
         String methodName = joinPoint.getSignature().getName();
@@ -75,9 +57,7 @@ public class SprintServiceLoggingAspect {
                 methodName, result);
     }
 
-    /**
-     * Log en cas d'exception dans SprintService
-     */
+
     @AfterThrowing(pointcut = "sprintServiceMethods()", throwing = "exception")
     public void logAfterThrowingSprintMethod(JoinPoint joinPoint, Throwable exception) {
         String methodName = joinPoint.getSignature().getName();
@@ -89,9 +69,7 @@ public class SprintServiceLoggingAspect {
                 exception.getClass().getSimpleName(), exception.getMessage());
     }
 
-    /**
-     * Log détaillé pour la création de sprints
-     */
+
     @Around("createSprintMethods()")
     public Object logAroundCreateSprint(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -112,9 +90,7 @@ public class SprintServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log détaillé pour la mise à jour de sprints
-     */
+
     @Around("updateSprintMethods()")
     public Object logAroundUpdateSprint(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -134,9 +110,7 @@ public class SprintServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log détaillé pour la suppression de sprints
-     */
+
     @Around("deleteSprintMethods()")
     public Object logAroundDeleteSprint(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -156,9 +130,7 @@ public class SprintServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log optimisé pour les opérations de lecture
-     */
+
     @Around("getSprintMethods()")
     public Object logAroundGetSprint(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -176,9 +148,7 @@ public class SprintServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log spécifique pour les opérations de workflow (start, complete, cancel)
-     */
+
     @Around("sprintWorkflowMethods()")
     public Object logAroundSprintWorkflow(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
@@ -205,9 +175,7 @@ public class SprintServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour l'ajout/retrait de User Stories
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.SprintService.add*UserStor*(..)) || " +
             "execution(* com.Agile.demo.execution.services.SprintService.remove*UserStor*(..))")
     public Object logAroundUserStoryManagement(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -231,9 +199,7 @@ public class SprintServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log pour les métriques et statistiques
-     */
+
     @Around("execution(* com.Agile.demo.execution.services.SprintService.get*Metrics(..)) || " +
             "execution(* com.Agile.demo.execution.services.SprintService.get*Burndown(..))")
     public Object logAroundMetrics(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -251,9 +217,6 @@ public class SprintServiceLoggingAspect {
         }
     }
 
-    /**
-     * Log final après chaque exécution
-     */
     @After("sprintServiceMethods()")
     public void logAfterSprintMethod(JoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();

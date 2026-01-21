@@ -22,9 +22,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Crée un nouvel utilisateur
-     */
+
     public User createUser(String username, String email, String password, Role role, String FirstName, String LastName, String PhoneNumber) {
         // Vérifier que le nom d'utilisateur n'existe pas déjà
         if (userRepository.existsByUsername(username)) {
@@ -53,60 +51,46 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    /**
-     * Récupère un utilisateur par son ID
-     */
+
     @Transactional(readOnly = true)
     public User getUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'ID: " + userId));
     }
 
-    /**
-     * Récupère un utilisateur par son nom d'utilisateur
-     */
+
     @Transactional(readOnly = true)
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé: " + username));
     }
 
-    /**
-     * Récupère un utilisateur par son email
-     */
+
     @Transactional(readOnly = true)
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'email: " + email));
     }
 
-    /**
-     * Récupère tous les utilisateurs
-     */
+
     @Transactional(readOnly = true)
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
-    /**
-     * Récupère les utilisateurs par rôle
-     */
+
     @Transactional(readOnly = true)
     public List<User> getUsersByRole(Role role) {
         return userRepository.findByRole(role);
     }
 
-    /**
-     * Récupère les utilisateurs d'un projet
-     */
+
     @Transactional(readOnly = true)
     public List<User> getUsersByProject(Long projectId) {
         return userRepository.findUsersByProjectId(projectId);
     }
 
-    /**
-     * Met à jour les informations d'un utilisateur
-     */
+
     public User updateUser(Long userId, String email, Role role, String firstName, String lastName, String phoneNumber, Boolean isActive) {
         User user = getUserById(userId);
 
@@ -130,9 +114,7 @@ public class UserService {
     }
 
 
-    /**
-     * Met à jour le mot de passe d'un utilisateur
-     */
+
     public User updatePassword(Long userId, String currentPassword, String newPassword) {
         User user = getUserById(userId);
 
@@ -150,9 +132,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    /**
-     * Supprime un utilisateur
-     */
+
     public void deleteUser(Long userId) {
         User user = getUserById(userId);
 
@@ -165,50 +145,38 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    /**
-     * Récupère les utilisateurs disponibles (avec peu de tâches)
-     */
+
     @Transactional(readOnly = true)
     public List<User> getAvailableUsers(Role role, long maxTasks) {
         return userRepository.findAvailableUsersByRole(role, maxTasks);
     }
 
-    /**
-     * Compte le nombre de tâches assignées à un utilisateur
-     */
+
     @Transactional(readOnly = true)
     public long countUserActiveTasks(Long userId) {
         return userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS) +
                 userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO);
     }
 
-    /**
-     * Vérifie si un utilisateur existe
-     */
+
     @Transactional(readOnly = true)
     public boolean userExists(Long userId) {
         return userRepository.existsById(userId);
     }
 
-    /**
-     * Vérifie si un nom d'utilisateur existe
-     */
+
     @Transactional(readOnly = true)
     public boolean usernameExists(String username) {
         return userRepository.existsByUsername(username);
     }
 
-    /**
-     * Vérifie si un email existe
-     */
+
     @Transactional(readOnly = true)
     public boolean emailExists(String email) {
         return userRepository.existsByEmail(email);
     }
 
-    /**
-     * Valide le format d'un email
-     */
+
     private boolean isValidEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             return false;
@@ -217,9 +185,7 @@ public class UserService {
         return email.matches(emailRegex);
     }
 
-    /**
-     * Récupère les statistiques d'un utilisateur
-     */
+
     @Transactional(readOnly = true)
     public UserStatistics getUserStatistics(Long userId) {
         User user = getUserById(userId);
