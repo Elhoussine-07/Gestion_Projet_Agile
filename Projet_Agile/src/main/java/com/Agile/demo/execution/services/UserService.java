@@ -488,11 +488,10 @@ public class UserService {
 
     public void sendWelcomeNotification(Long userId) {
         User user = getUserById(userId);
-        // TODO: Implémenter l'envoi d'email/notification
         System.out.println("Bienvenue " + user.getUsername() + " ! Email envoyé à: " + user.getEmail());
     }
 
-    // ✅ MODIFIÉ : Records avec Set<Role>
+
     public record UserStatistics(
             String username,
             Set<Role> roles,
