@@ -24,7 +24,7 @@ public class TaskService {
 
     private final Map<Long, TaskBlockInfo> blockedTasks = new HashMap<>();
 
-    // ==================== CRUD OPERATIONS ====================
+
 
     public Task createTask(Long userStoryId, String title, Integer estimatedHours) {
         UserStory userStory = userStoryRepository.findById(userStoryId)
@@ -72,6 +72,7 @@ public class TaskService {
     public List<Task> getTasksBySprint(Integer sprintId) {
         return taskRepository.findBySprintBacklogId(sprintId);
     }
+
 
     @Transactional(readOnly = true)
     public List<Task> getTasksByUser(Long userId) {

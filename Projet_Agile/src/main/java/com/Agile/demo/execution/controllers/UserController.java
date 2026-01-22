@@ -1,11 +1,11 @@
 package com.Agile.demo.execution.controllers;
 
 import com.Agile.demo.execution.dto.PasswordUpdateRequest;
-import com.Agile.demo.execution.dto.UserCreateRequest;
 import com.Agile.demo.execution.dto.UserUpdateRequest;
 import com.Agile.demo.execution.services.UserService;
 import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
+import com.Agile.demo.execution.dto.CreateUserRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -25,12 +25,12 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody UserCreateRequest request) {
+    public ResponseEntity<User> createUser(@RequestBody CreateUserRequest request) {
         User user = userService.createUser(
                 request.getUsername(),
                 request.getEmail(),
                 request.getPassword(),
-                request.getRole(),
+                request.getRoles(),
                 request.getFirstName(),
                 request.getLastName(),
                 request.getPhoneNumber()
@@ -91,7 +91,7 @@ public class UserController {
         User user = userService.updateUser(
                 userId,
                 request.getEmail(),
-                request.getRole(),
+                request.getRoles(),
                 request.getFirstName(),
                 request.getLastName(),
                 request.getPhoneNumber(),

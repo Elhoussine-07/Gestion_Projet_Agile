@@ -77,7 +77,67 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-backlogs/*/prioritize").hasRole("PRODUCT_OWNER")
 
-                        // Tous les autres endpoints nécessitent authentification
+
+                        .requestMatchers(HttpMethod.POST, "/api/users").hasRole("PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/activate").hasRole("PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/deactivate").hasRole("PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/reset-password").hasRole("PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/mark-password-changed").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/send-welcome").hasRole("PRODUCT_OWNER")
+
+
+                        .requestMatchers(HttpMethod.PUT, "/api/users/*/password").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/*/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/*").hasRole("PRODUCT_OWNER")
+
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/*").hasRole("PRODUCT_OWNER")
+
+
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").authenticated()
+
+
+                        .requestMatchers(HttpMethod.POST, "/api/sprints").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER")
+                        .requestMatchers(HttpMethod.POST, "/api/sprints/*/start").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER")
+                        .requestMatchers(HttpMethod.POST, "/api/sprints/*/complete").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER")
+                        .requestMatchers(HttpMethod.POST, "/api/sprints/*/user-stories/*").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER")
+
+
+                        .requestMatchers(HttpMethod.PUT, "/api/sprints/*").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER")
+
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/sprints/*").hasRole("PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/sprints/*/user-stories/*").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER")
+
+
+                        .requestMatchers(HttpMethod.GET, "/api/sprints/**").authenticated()
+
+
+                        .requestMatchers(HttpMethod.POST, "/api/tasks").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER", "DEVELOPER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/assign/*").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER", "DEVELOPER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/unassign").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER", "DEVELOPER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/log-hours").hasAnyRole("DEVELOPER", "SCRUM_MASTER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/start").hasAnyRole("DEVELOPER", "SCRUM_MASTER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/review").hasAnyRole("DEVELOPER", "SCRUM_MASTER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/testing").hasAnyRole("DEVELOPER", "SCRUM_MASTER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/complete").hasAnyRole("DEVELOPER", "SCRUM_MASTER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/block").hasAnyRole("DEVELOPER", "SCRUM_MASTER", "PRODUCT_OWNER", "TESTER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/unblock").hasAnyRole("SCRUM_MASTER", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/reassign/from/*/to/*").hasAnyRole("SCRUM_MASTER", "PRODUCT_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/*/duplicate").hasAnyRole("SCRUM_MASTER", "PRODUCT_OWNER")
+
+
+                        .requestMatchers(HttpMethod.PUT, "/api/tasks/*/estimated-hours").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER", "DEVELOPER", "TESTER")
+                        .requestMatchers(HttpMethod.PUT, "/api/tasks/*/status").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER", "DEVELOPER", "TESTER")
+                        .requestMatchers(HttpMethod.PUT, "/api/tasks/*/description").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER", "DEVELOPER", "TESTER")
+                        .requestMatchers(HttpMethod.PUT, "/api/tasks/*/title").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER", "DEVELOPER", "TESTER")
+
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/tasks/*").hasAnyRole("PRODUCT_OWNER", "SCRUM_MASTER")
+
+
+                        .requestMatchers(HttpMethod.GET, "/api/tasks/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

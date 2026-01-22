@@ -10,9 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,92 +21,90 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Crée un nouvel utilisateur
-     */
-    public User createUser(String username, String email, String password, Role role, String FirstName, String LastName, String PhoneNumber) {
-        // Vérifier que le nom d'utilisateur n'existe pas déjà
+    public User createUser(String username, String email, String password, Set<Role> roles,
+                           String firstName, String lastName, String phoneNumber) {
+
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Le nom d'utilisateur existe déjà: " + username);
         }
 
-        // Vérifier que l'email n'existe pas déjà
+
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("L'email existe déjà: " + email);
         }
 
-        // Valider l'email
+
         if (!isValidEmail(email)) {
             throw new IllegalArgumentException("Format d'email invalide: " + email);
         }
 
-        User user = new User();
-        user.setUsername(username);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setRole(role);
-        user.setFirstName(FirstName);
-        user.setLastName(LastName);
-        user.setPhoneNumber(PhoneNumber);
+
+        if (roles == null || roles.isEmpty()) {
+            throw new IllegalArgumentException("Au moins un rôle doit être spécifié");
+        }
+
+        User user = User.builder()
+                .username(username)
+                .email(email)
+                .password(passwordEncoder.encode(password))
+                .roles(new HashSet<>(roles))
+                .firstName(firstName)
+                .lastName(lastName)
+                .phoneNumber(phoneNumber)
+                .isActive(true)
+                .passwordResetRequired(false)
+                .build();
 
         return userRepository.save(user);
     }
 
-    /**
-     * Récupère un utilisateur par son ID
-     */
+    public User createUser(String username, String email, String password, Role role,
+                           String firstName, String lastName, String phoneNumber) {
+        return createUser(username, email, password, Set.of(role), firstName, lastName, phoneNumber);
+    }
+
     @Transactional(readOnly = true)
     public User getUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'ID: " + userId));
     }
 
-    /**
-     * Récupère un utilisateur par son nom d'utilisateur
-     */
     @Transactional(readOnly = true)
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé: " + username));
     }
 
-    /**
-     * Récupère un utilisateur par son email
-     */
     @Transactional(readOnly = true)
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'email: " + email));
     }
 
-    /**
-     * Récupère tous les utilisateurs
-     */
     @Transactional(readOnly = true)
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
-    /**
-     * Récupère les utilisateurs par rôle
-     */
     @Transactional(readOnly = true)
     public List<User> getUsersByRole(Role role) {
         return userRepository.findByRole(role);
     }
 
-    /**
-     * Récupère les utilisateurs d'un projet
-     */
+    // ✅ NOUVEAU : Recherche par plusieurs rôles
+    @Transactional(readOnly = true)
+    public List<User> getUsersByRoles(List<Role> roles) {
+        return userRepository.findByRolesIn(roles);
+    }
+
     @Transactional(readOnly = true)
     public List<User> getUsersByProject(Long projectId) {
         return userRepository.findUsersByProjectId(projectId);
     }
 
-    /**
-     * Met à jour les informations d'un utilisateur
-     */
-    public User updateUser(Long userId, String email, Role role, String firstName, String lastName, String phoneNumber, Boolean isActive) {
+    // ✅ MODIFIÉ : Gestion des rôles multiples
+    public User updateUser(Long userId, String email, Set<Role> roles, String firstName,
+                           String lastName, String phoneNumber, Boolean isActive) {
         User user = getUserById(userId);
 
         if (email != null && !email.equals(user.getEmail())) {
@@ -120,7 +117,9 @@ public class UserService {
             user.setEmail(email);
         }
 
-        if (role != null) user.setRole(role);
+        if (roles != null && !roles.isEmpty()) {
+            user.setRoles(new HashSet<>(roles));
+        }
         if (firstName != null) user.setFirstName(firstName);
         if (lastName != null) user.setLastName(lastName);
         if (phoneNumber != null) user.setPhoneNumber(phoneNumber);
@@ -129,10 +128,46 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    // ✅ NOUVEAU : Méthode de compatibilité pour un seul rôle
+    public User updateUser(Long userId, String email, Role role, String firstName,
+                           String lastName, String phoneNumber, Boolean isActive) {
+        return updateUser(userId, email, role != null ? Set.of(role) : null,
+                firstName, lastName, phoneNumber, isActive);
+    }
 
-    /**
-     * Met à jour le mot de passe d'un utilisateur
-     */
+    // ✅ NOUVEAU : Ajouter un rôle à un utilisateur
+    public User addRoleToUser(Long userId, Role role) {
+        User user = getUserById(userId);
+        user.addRole(role);
+        return userRepository.save(user);
+    }
+
+    // ✅ NOUVEAU : Retirer un rôle à un utilisateur
+    public User removeRoleFromUser(Long userId, Role role) {
+        User user = getUserById(userId);
+
+        if (user.getRoles().size() <= 1) {
+            throw new IllegalStateException("Un utilisateur doit avoir au moins un rôle");
+        }
+
+        user.removeRole(role);
+        return userRepository.save(user);
+    }
+
+    // ✅ NOUVEAU : Vérifier si un utilisateur a un rôle
+    @Transactional(readOnly = true)
+    public boolean userHasRole(Long userId, Role role) {
+        User user = getUserById(userId);
+        return user.hasRole(role);
+    }
+
+    // ✅ NOUVEAU : Vérifier si un utilisateur a au moins un des rôles
+    @Transactional(readOnly = true)
+    public boolean userHasAnyRole(Long userId, Role... roles) {
+        User user = getUserById(userId);
+        return user.hasAnyRole(roles);
+    }
+
     public User updatePassword(Long userId, String currentPassword, String newPassword) {
         User user = getUserById(userId);
 
@@ -150,9 +185,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    /**
-     * Supprime un utilisateur
-     */
     public void deleteUser(Long userId) {
         User user = getUserById(userId);
 
@@ -165,50 +197,32 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    /**
-     * Récupère les utilisateurs disponibles (avec peu de tâches)
-     */
     @Transactional(readOnly = true)
     public List<User> getAvailableUsers(Role role, long maxTasks) {
         return userRepository.findAvailableUsersByRole(role, maxTasks);
     }
 
-    /**
-     * Compte le nombre de tâches assignées à un utilisateur
-     */
     @Transactional(readOnly = true)
     public long countUserActiveTasks(Long userId) {
         return userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS) +
                 userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO);
     }
 
-    /**
-     * Vérifie si un utilisateur existe
-     */
     @Transactional(readOnly = true)
     public boolean userExists(Long userId) {
         return userRepository.existsById(userId);
     }
 
-    /**
-     * Vérifie si un nom d'utilisateur existe
-     */
     @Transactional(readOnly = true)
     public boolean usernameExists(String username) {
         return userRepository.existsByUsername(username);
     }
 
-    /**
-     * Vérifie si un email existe
-     */
     @Transactional(readOnly = true)
     public boolean emailExists(String email) {
         return userRepository.existsByEmail(email);
     }
 
-    /**
-     * Valide le format d'un email
-     */
     private boolean isValidEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             return false;
@@ -217,9 +231,7 @@ public class UserService {
         return email.matches(emailRegex);
     }
 
-    /**
-     * Récupère les statistiques d'un utilisateur
-     */
+    // ✅ MODIFIÉ : UserStatistics avec Set<Role>
     @Transactional(readOnly = true)
     public UserStatistics getUserStatistics(Long userId) {
         User user = getUserById(userId);
@@ -233,7 +245,7 @@ public class UserService {
 
         return new UserStatistics(
                 user.getUsername(),
-                user.getRole(),
+                user.getRoles(),
                 (int) todoTasks,
                 (int) inProgressTasks,
                 (int) doneTasks,
@@ -242,26 +254,11 @@ public class UserService {
         );
     }
 
-    /**
-     * Classe interne pour les statistiques utilisateur
-     */
-    public record UserStatistics(
-            String username,
-            Role role,
-            int todoTasks,
-            int inProgressTasks,
-            int completedTasks,
-            int totalTasks,
-            double completionRate
-    ) {}
-
-
     public User activateUser(Long userId) {
         User user = getUserById(userId);
         user.setisActive(true);
         return userRepository.save(user);
     }
-
 
     public User deactivateUser(Long userId) {
         User user = getUserById(userId);
@@ -276,18 +273,15 @@ public class UserService {
         return userRepository.save(user);
     }
 
-
     @Transactional(readOnly = true)
     public List<User> getActiveUsers() {
         return userRepository.findByIsActiveTrue();
     }
 
-
     @Transactional(readOnly = true)
     public List<User> getActiveUsersByRole(Role role) {
         return userRepository.findByRoleAndIsActiveTrue(role);
     }
-
 
     @Transactional(readOnly = true)
     public List<User> searchUsers(String searchTerm) {
@@ -295,12 +289,12 @@ public class UserService {
                 searchTerm, searchTerm);
     }
 
-
     @Transactional(readOnly = true)
     public List<User> getAvailableDevelopers(int maxActiveTasks) {
         return userRepository.findAvailableUsersByRole(Role.DEVELOPER, maxActiveTasks);
     }
 
+    // ✅ MODIFIÉ : UserWorkload avec Set<Role>
     @Transactional(readOnly = true)
     public List<UserWorkload> getMostLoadedUsers(int limit) {
         List<User> users = userRepository.findAll();
@@ -311,7 +305,7 @@ public class UserService {
                     return new UserWorkload(
                             user.getId(),
                             user.getUsername(),
-                            user.getRole(),
+                            user.getRoles(),
                             (int) activeTasks
                     );
                 })
@@ -319,7 +313,6 @@ public class UserService {
                 .limit(limit)
                 .toList();
     }
-
 
     @Transactional(readOnly = true)
     public TeamWorkload getTeamWorkload(Long projectId) {
@@ -341,7 +334,7 @@ public class UserService {
                 .map(user -> new UserWorkload(
                         user.getId(),
                         user.getUsername(),
-                        user.getRole(),
+                        user.getRoles(),
                         (int) countUserActiveTasks(user.getId())
                 ))
                 .toList();
@@ -355,13 +348,11 @@ public class UserService {
         );
     }
 
-
     @Transactional(readOnly = true)
     public boolean isUserAvailable(Long userId, int maxTaskThreshold) {
         long activeTasks = countUserActiveTasks(userId);
         return activeTasks < maxTaskThreshold;
     }
-
 
     @Transactional(readOnly = true)
     public User getLeastLoadedUserByRole(Role role) {
@@ -376,9 +367,6 @@ public class UserService {
                 .orElseThrow(() -> new IllegalStateException("Aucun utilisateur disponible avec le rôle: " + role));
     }
 
-    /**
-     * Met à jour le profil utilisateur complet
-     */
     public User updateUserProfile(Long userId, String email, String firstName,
                                   String lastName, String phoneNumber) {
         User user = getUserById(userId);
@@ -400,9 +388,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    /**
-     * Récupère les statistiques d'équipe par rôle
-     */
     @Transactional(readOnly = true)
     public Map<Role, Integer> getUserCountByRole() {
         Map<Role, Integer> roleCount = new HashMap<>();
@@ -413,6 +398,38 @@ public class UserService {
         return roleCount;
     }
 
+    // ✅ NOUVEAU : Statistiques des utilisateurs multi-rôles
+    @Transactional(readOnly = true)
+    public Map<String, Object> getUserRoleStatistics() {
+        List<User> allUsers = userRepository.findAll();
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalUsers", allUsers.size());
+        stats.put("usersWithMultipleRoles", allUsers.stream()
+                .filter(u -> u.getRoles().size() > 1)
+                .count());
+        stats.put("usersWithSingleRole", allUsers.stream()
+                .filter(u -> u.getRoles().size() == 1)
+                .count());
+
+        // Distribution par nombre de rôles
+        Map<Integer, Long> roleCountDistribution = allUsers.stream()
+                .collect(Collectors.groupingBy(
+                        u -> u.getRoles().size(),
+                        Collectors.counting()
+                ));
+        stats.put("roleCountDistribution", roleCountDistribution);
+
+        // Combinaisons de rôles les plus fréquentes
+        Map<Set<Role>, Long> roleCombinations = allUsers.stream()
+                .collect(Collectors.groupingBy(
+                        User::getRoles,
+                        Collectors.counting()
+                ));
+        stats.put("mostCommonRoleCombinations", roleCombinations);
+
+        return stats;
+    }
 
     public User resetPassword(Long userId, String newPassword) {
         User user = getUserById(userId);
@@ -426,32 +443,22 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    /**
-     * Vérifie si un utilisateur nécessite un reset de mot de passe
-     */
     @Transactional(readOnly = true)
     public boolean requiresPasswordReset(Long userId) {
         User user = getUserById(userId);
         return user.isPasswordResetRequired();
     }
 
-    /**
-     * Marque le mot de passe comme changé
-     */
     public User markPasswordChanged(Long userId) {
         User user = getUserById(userId);
         user.setPasswordResetRequired(false);
         return userRepository.save(user);
     }
 
-    /**
-     * Récupère les performances d'un utilisateur sur une période
-     */
     @Transactional(readOnly = true)
     public UserPerformance getUserPerformance(Long userId, LocalDate startDate, LocalDate endDate) {
         UserStatistics stats = getUserStatistics(userId);
 
-        // Récupérer les tâches complétées dans la période
         int tasksCompletedInPeriod = userRepository.countTasksCompletedByUserBetweenDates(
                 userId, startDate, endDate);
 
@@ -463,16 +470,13 @@ public class UserService {
 
         return new UserPerformance(
                 stats.username(),
-                stats.role(),
+                stats.roles(),
                 tasksCompletedInPeriod,
                 averageTasksPerWeek,
                 stats.completionRate()
         );
     }
 
-    /**
-     * Récupère les utilisateurs n'ayant pas de tâches assignées
-     */
     @Transactional(readOnly = true)
     public List<User> getUsersWithoutTasks(Long projectId) {
         List<User> projectUsers = getUsersByProject(projectId);
@@ -482,21 +486,26 @@ public class UserService {
                 .toList();
     }
 
-    /**
-     * Envoie une notification de bienvenue (à implémenter avec un service de notification)
-     */
     public void sendWelcomeNotification(Long userId) {
         User user = getUserById(userId);
-        // TODO: Implémenter l'envoi d'email/notification
         System.out.println("Bienvenue " + user.getUsername() + " ! Email envoyé à: " + user.getEmail());
     }
 
-// Classes internes pour les statistiques
+
+    public record UserStatistics(
+            String username,
+            Set<Role> roles,
+            int todoTasks,
+            int inProgressTasks,
+            int completedTasks,
+            int totalTasks,
+            double completionRate
+    ) {}
 
     public record UserWorkload(
             Long userId,
             String username,
-            Role role,
+            Set<Role> roles,
             int activeTasks
     ) {}
 
@@ -510,10 +519,9 @@ public class UserService {
 
     public record UserPerformance(
             String username,
-            Role role,
+            Set<Role> roles,
             int tasksCompletedInPeriod,
             int averageTasksPerWeek,
             double overallCompletionRate
     ) {}
-
 }
