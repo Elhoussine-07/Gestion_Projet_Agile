@@ -1,8 +1,8 @@
 package com.Agile.demo.execution.controllers;
 
-import com.Agile.demo.execution.dto.TaskCreateRequest;
+
+import com.Agile.demo.execution.dto.task.*;
 import com.Agile.demo.execution.services.TaskService;
-import com.Agile.demo.model.Task;
 import com.Agile.demo.model.WorkItemStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -20,129 +19,140 @@ public class TaskController {
 
     private final TaskService taskService;
 
+    // ==================== CRÉATION ====================
+
     @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody TaskCreateRequest request) {
-        Task task;
-        if (request.getDescription() != null && !request.getDescription().isEmpty()) {
-            task = taskService.createTask(
-                    request.getUserStoryId(),
-                    request.getTitle(),
-                    request.getDescription(),
-                    request.getEstimatedHours()
-            );
-        } else {
-            task = taskService.createTask(
-                    request.getUserStoryId(),
-                    request.getTitle(),
-                    request.getEstimatedHours()
-            );
-        }
+    public ResponseEntity<TaskResponseDTO> createTask(@RequestBody CreateTaskRequest request) {
+        TaskResponseDTO task = taskService.createTask(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(task);
     }
 
+    // ==================== LECTURE ====================
 
     @GetMapping("/{taskId}")
-    public ResponseEntity<Task> getTaskById(@PathVariable Long taskId) {
-        Task task = taskService.getTaskById(taskId);
-        return ResponseEntity.ok(task);
+    public ResponseEntity<TaskResponseDTO> getTaskById(@PathVariable Long taskId) {
+        return ResponseEntity.ok(taskService.getTaskById(taskId));
     }
 
-
     @GetMapping("/user-story/{userStoryId}")
-    public ResponseEntity<List<Task>> getTasksByUserStory(@PathVariable Long userStoryId) {
-        List<Task> tasks = taskService.getTasksByUserStory(userStoryId);
-        return ResponseEntity.ok(tasks);
+    public ResponseEntity<List<TaskResponseDTO>> getTasksByUserStory(@PathVariable Long userStoryId) {
+        return ResponseEntity.ok(taskService.getTasksByUserStory(userStoryId));
     }
 
     @GetMapping("/sprint/{sprintId}")
-    public ResponseEntity<List<Task>> getTasksBySprint(@PathVariable Long sprintId) {
-        List<Task> tasks = taskService.getTasksBySprint(sprintId.intValue());
-        return ResponseEntity.ok(tasks);
+    public ResponseEntity<List<TaskResponseDTO>> getTasksBySprint(@PathVariable Integer sprintId) {
+        return ResponseEntity.ok(taskService.getTasksBySprint(sprintId));
     }
-
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Task>> getTasksByUser(@PathVariable Long userId) {
-        List<Task> tasks = taskService.getTasksByUser(userId);
-        return ResponseEntity.ok(tasks);
+    public ResponseEntity<List<TaskResponseDTO>> getTasksByUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(taskService.getTasksByUser(userId));
     }
 
-
-    @PostMapping("/{taskId}/assign/{userId}")
-    public ResponseEntity<Task> assignTask(@PathVariable Long taskId, @PathVariable Long userId) {
-        Task task = taskService.assignTask(taskId, userId);
-        return ResponseEntity.ok(task);
+    @GetMapping("/sprint/{sprintId}/status/{status}")
+    public ResponseEntity<List<TaskResponseDTO>> getTasksByStatus(
+            @PathVariable Long sprintId,
+            @PathVariable WorkItemStatus status) {
+        return ResponseEntity.ok(taskService.getTasksByStatus(sprintId, status));
     }
 
-
-    @PostMapping("/{taskId}/unassign")
-    public ResponseEntity<Task> unassignTask(@PathVariable Long taskId) {
-        Task task = taskService.unassignTask(taskId);
-        return ResponseEntity.ok(task);
+    @GetMapping("/sprint/{sprintId}/unassigned")
+    public ResponseEntity<List<TaskResponseDTO>> getUnassignedTasksBySprint(@PathVariable Long sprintId) {
+        return ResponseEntity.ok(taskService.getUnassignedTasksBySprint(sprintId));
     }
 
+    // ==================== MISE À JOUR ====================
+
+    @PutMapping("/{taskId}")
+    public ResponseEntity<TaskResponseDTO> updateTask(
+            @PathVariable Long taskId,
+            @RequestBody UpdateTaskRequest request) {
+        return ResponseEntity.ok(taskService.updateTask(taskId, request));
+    }
+
+    // ==================== GESTION EFFORT & ASSIGNATION ====================
 
     @PostMapping("/{taskId}/log-hours")
-    public ResponseEntity<Task> logHours(@PathVariable Long taskId, @RequestBody Map<String, Integer> request) {
-        Task task = taskService.logHours(taskId, request.get("hours"));
-        return ResponseEntity.ok(task);
+    public ResponseEntity<TaskResponseDTO> logHours(
+            @PathVariable Long taskId,
+            @RequestBody LogHoursRequest request) {
+        return ResponseEntity.ok(taskService.logHours(taskId, request));
     }
 
-
-    @PutMapping("/{taskId}/estimated-hours")
-    public ResponseEntity<Task> updateEstimatedHours(@PathVariable Long taskId, @RequestBody Map<String, Integer> request) {
-        Task task = taskService.updateEstimatedHours(taskId, request.get("estimatedHours"));
-        return ResponseEntity.ok(task);
+    @PostMapping("/{taskId}/assign/{userId}")
+    public ResponseEntity<TaskResponseDTO> assignTask(
+            @PathVariable Long taskId,
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(taskService.assignTask(taskId, userId));
     }
 
-
-    @PostMapping("/{taskId}/start")
-    public ResponseEntity<Task> startTask(@PathVariable Long taskId) {
-        Task task = taskService.startTask(taskId);
-        return ResponseEntity.ok(task);
+    @PostMapping("/{taskId}/unassign")
+    public ResponseEntity<TaskResponseDTO> unassignTask(@PathVariable Long taskId) {
+        return ResponseEntity.ok(taskService.unassignTask(taskId));
     }
 
+    @PostMapping("/reassign/from/{fromUserId}/to/{toUserId}")
+    public ResponseEntity<Void> reassignUserTasks(
+            @PathVariable Long fromUserId,
+            @PathVariable Long toUserId) {
+        taskService.reassignUserTasks(fromUserId, toUserId);
+        return ResponseEntity.ok().build();
+    }
+
+    // ==================== WORKFLOW ====================
+
+    @PostMapping("/{taskId}/start/{userId}")
+    public ResponseEntity<TaskResponseDTO> startTask(
+            @PathVariable Long taskId,
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(taskService.startTask(taskId, userId));
+    }
 
     @PostMapping("/{taskId}/review")
-    public ResponseEntity<Task> moveTaskToReview(@PathVariable Long taskId) {
-        Task task = taskService.moveTaskToReview(taskId);
-        return ResponseEntity.ok(task);
+    public ResponseEntity<TaskResponseDTO> moveTaskToReview(@PathVariable Long taskId) {
+        return ResponseEntity.ok(taskService.moveTaskToReview(taskId));
     }
-
 
     @PostMapping("/{taskId}/testing")
-    public ResponseEntity<Task> moveTaskToTesting(@PathVariable Long taskId) {
-        Task task = taskService.moveTaskToTesting(taskId);
-        return ResponseEntity.ok(task);
+    public ResponseEntity<TaskResponseDTO> moveTaskToTesting(@PathVariable Long taskId) {
+        return ResponseEntity.ok(taskService.moveTaskToTesting(taskId));
     }
-
 
     @PostMapping("/{taskId}/complete")
-    public ResponseEntity<Task> completeTask(@PathVariable Long taskId) {
-        Task task = taskService.completeTask(taskId);
-        return ResponseEntity.ok(task);
+    public ResponseEntity<TaskResponseDTO> completeTask(@PathVariable Long taskId) {
+        return ResponseEntity.ok(taskService.completeTask(taskId));
     }
 
+    // ==================== BLOCAGE ====================
 
-    @PutMapping("/{taskId}/status")
-    public ResponseEntity<Task> updateTaskStatus(@PathVariable Long taskId, @RequestBody Map<String, WorkItemStatus> request) {
-        Task task = taskService.updateTaskStatus(taskId, request.get("status"));
-        return ResponseEntity.ok(task);
+    @PostMapping("/{taskId}/block")
+    public ResponseEntity<TaskResponseDTO> blockTask(
+            @PathVariable Long taskId,
+            @RequestBody BlockTaskRequest request) {
+        return ResponseEntity.ok(taskService.blockTask(taskId, request));
     }
 
-    @PutMapping("/{taskId}/description")
-    public ResponseEntity<Task> updateTaskDescription(@PathVariable Long taskId, @RequestBody Map<String, String> request) {
-        Task task = taskService.updateTaskDescription(taskId, request.get("description"));
-        return ResponseEntity.ok(task);
+    @PostMapping("/{taskId}/unblock")
+    public ResponseEntity<TaskResponseDTO> unblockTask(@PathVariable Long taskId) {
+        return ResponseEntity.ok(taskService.unblockTask(taskId));
     }
 
-
-    @PutMapping("/{taskId}/title")
-    public ResponseEntity<Task> updateTaskTitle(@PathVariable Long taskId, @RequestBody Map<String, String> request) {
-        Task task = taskService.updateTaskTitle(taskId, request.get("title"));
-        return ResponseEntity.ok(task);
+    // Méthodes utilitaires exposées car publiques dans le service
+    @GetMapping("/{taskId}/is-blocked")
+    public ResponseEntity<Boolean> isTaskBlocked(@PathVariable Long taskId) {
+        return ResponseEntity.ok(taskService.isTaskBlocked(taskId));
     }
 
+    @GetMapping("/{taskId}/block-info")
+    public ResponseEntity<TaskService.TaskBlockInfo> getTaskBlockInfo(@PathVariable Long taskId) {
+        TaskService.TaskBlockInfo info = taskService.getTaskBlockInfo(taskId);
+        if (info == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(info);
+    }
+
+    // ==================== ACTIONS SPÉCIALES ====================
 
     @DeleteMapping("/{taskId}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long taskId) {
@@ -150,125 +160,24 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
-
-    // ✅ CORRECT
-    @GetMapping("/sprint/{sprintId}/unassigned")
-    public ResponseEntity<List<Task>> getUnassignedTasksBySprint(@PathVariable Long sprintId) {
-        List<Task> tasks = taskService.getUnassignedTasksBySprint(sprintId);
-        return ResponseEntity.ok(tasks);
+    @PostMapping("/{taskId}/duplicate")
+    public ResponseEntity<TaskResponseDTO> duplicateTask(@PathVariable Long taskId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.duplicateTask(taskId));
     }
 
-
-    @GetMapping("/sprint/{sprintId}/over-estimated")
-    public ResponseEntity<List<Task>> getOverEstimatedTasksBySprint(@PathVariable Long sprintId) {
-        List<Task> tasks = taskService.findOverEstimatedTasksBySprint(sprintId);
-        return ResponseEntity.ok(tasks);
-    }
-
+    // ==================== STATISTIQUES ====================
 
     @GetMapping("/user-story/{userStoryId}/metrics")
     public ResponseEntity<TaskService.UserStoryTaskMetrics> getUserStoryTaskMetrics(@PathVariable Long userStoryId) {
-        TaskService.UserStoryTaskMetrics metrics = taskService.getUserStoryTaskMetrics(userStoryId);
-        return ResponseEntity.ok(metrics);
+        return ResponseEntity.ok(taskService.getUserStoryTaskMetrics(userStoryId));
     }
-
-
-    @GetMapping("/sprint/{sprintId}/status/{status}")
-    public ResponseEntity<List<Task>> getTasksBySprintAndStatus(
-            @PathVariable Long sprintId,
-            @PathVariable WorkItemStatus status) {
-
-        List<Task> tasks = taskService.getTasksBySprintAndStatus(sprintId, status);
-        return ResponseEntity.ok(tasks);
-    }
-
-
-    @GetMapping("/sprint/{sprintId}/blocked")
-    public ResponseEntity<List<Task>> getBlockedTasks(@PathVariable Long sprintId) {
-        List<Task> tasks = taskService.getBlockedTasks(sprintId.intValue());
-        return ResponseEntity.ok(tasks);
-    }
-
-
-    @PostMapping("/{taskId}/block")
-    public ResponseEntity<Task> blockTask(@PathVariable Long taskId, @RequestBody Map<String, String> request) {
-        Task task = taskService.blockTask(taskId, request.get("blockReason"));
-        return ResponseEntity.ok(task);
-    }
-
-
-    @PostMapping("/{taskId}/unblock")
-    public ResponseEntity<Task> unblockTask(@PathVariable Long taskId) {
-        Task task = taskService.unblockTask(taskId);
-        return ResponseEntity.ok(task);
-    }
-
-
-    @GetMapping("/sprint/{sprintId}/exceeding-estimate")
-    public ResponseEntity<List<Task>> getTasksExceedingEstimate(@PathVariable Long sprintId) {
-        List<Task> tasks = taskService.getTasksExceedingEstimate(sprintId.intValue());
-        return ResponseEntity.ok(tasks);
-    }
-
-
-    @PostMapping("/reassign/from/{fromUserId}/to/{toUserId}")
-    public ResponseEntity<Void> reassignUserTasks(@PathVariable Long fromUserId, @PathVariable Long toUserId) {
-        taskService.reassignUserTasks(fromUserId, toUserId);
-        return ResponseEntity.ok().build();
-    }
-
-
-    @GetMapping("/sprint/{sprintNumber}/critical")
-    public ResponseEntity<List<Task>> getCriticalTasks(@PathVariable Integer sprintNumber) {
-        List<Task> tasks = taskService.getCriticalTasks(sprintNumber);
-        return ResponseEntity.ok(tasks);
-    }
-
-
-    @PostMapping("/{taskId}/duplicate")
-    public ResponseEntity<Task> duplicateTask(@PathVariable Long taskId) {
-        Task task = taskService.duplicateTask(taskId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(task);
-    }
-
-
-    @GetMapping("/sprint/{sprintId}/recently-completed")
-    public ResponseEntity<List<Task>> getRecentlyCompletedTasks(
-            @PathVariable Long sprintId,
-            @RequestParam(defaultValue = "7") int days) {
-
-        List<Task> tasks = taskService.getRecentlyCompletedTasks(sprintId.intValue(), days);
-        return ResponseEntity.ok(tasks);
-    }
-
-
-    @GetMapping("/sprint/{sprintId}/remaining-hours")
-    public ResponseEntity<Integer> calculateRemainingHours(@PathVariable Long sprintId) {
-        int remainingHours = taskService.calculateRemainingHours((long) sprintId.intValue());
-        return ResponseEntity.ok(remainingHours);
-    }
-
 
     @GetMapping("/sprint/{sprintId}/statistics")
-    public ResponseEntity<TaskService.SprintTaskStatistics> getSprintTaskStatistics(@PathVariable Long sprintId) {
-        TaskService.SprintTaskStatistics stats = taskService.getSprintTaskStatistics(sprintId.intValue());
-        return ResponseEntity.ok(stats);
+    public ResponseEntity<TaskService.SprintTaskStatistics> getSprintTaskStatistics(@PathVariable Integer sprintId) {
+        return ResponseEntity.ok(taskService.getSprintTaskStatistics(sprintId));
     }
 
-
-    @GetMapping("/{taskId}/can-delete")
-    public ResponseEntity<Boolean> canDeleteTask(@PathVariable Long taskId) {
-        boolean canDelete = taskService.canDeleteTask(taskId);
-        return ResponseEntity.ok(canDelete);
-    }
-
-
-    @GetMapping("/user/{userId}/sprint/{sprintId}")
-    public ResponseEntity<List<Task>> getUserTasksForSprint(@PathVariable Long userId, @PathVariable Long sprintId) {
-        List<Task> tasks = taskService.getUserTasksForSprint(userId, sprintId);
-        return ResponseEntity.ok(tasks);
-    }
-
+    // ==================== GESTION ERREURS ====================
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
@@ -280,5 +189,3 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }
-
-//dyal db

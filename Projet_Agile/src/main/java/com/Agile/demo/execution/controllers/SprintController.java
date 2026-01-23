@@ -1,10 +1,10 @@
 package com.Agile.demo.execution.controllers;
 
+import com.Agile.demo.execution.dto.SprintBacklogResponseDTO;
 import com.Agile.demo.execution.dto.SprintCloneRequest;
 import com.Agile.demo.execution.dto.SprintCreateRequest;
 import com.Agile.demo.execution.dto.SprintUpdateRequest;
 import com.Agile.demo.execution.services.SprintService;
-import com.Agile.demo.model.SprintBacklog;
 import com.Agile.demo.model.SprintStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,65 +24,56 @@ public class SprintController {
     private final SprintService sprintService;
 
     @PostMapping
-    public ResponseEntity<SprintBacklog> createSprint(@RequestBody SprintCreateRequest request) {
-        SprintBacklog sprint = sprintService.createSprint(
-                request.getProjectId(),
-                request.getSprintNumber(),
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getGoal(),
-                request.getUserStoryIds()
-        );
+    public ResponseEntity<SprintBacklogResponseDTO> createSprint(@RequestBody SprintCreateRequest request) {
+        SprintBacklogResponseDTO sprint = sprintService.createSprint(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(sprint);
     }
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<SprintBacklog>> getSprintsByProject(@PathVariable Long projectId) {
-        List<SprintBacklog> sprints = sprintService.getSprintsByProject(projectId);
+    public ResponseEntity<List<SprintBacklogResponseDTO>> getSprintsByProject(@PathVariable Long projectId) {
+        List<SprintBacklogResponseDTO> sprints = sprintService.getSprintsByProject(projectId);
         return ResponseEntity.ok(sprints);
     }
 
     @GetMapping("/project/{projectId}/active")
-    public ResponseEntity<SprintBacklog> getActiveSprint(@PathVariable Long projectId) {
-        SprintBacklog sprint = sprintService.getActiveSprint(projectId);
+    public ResponseEntity<SprintBacklogResponseDTO> getActiveSprint(@PathVariable Long projectId) {
+        SprintBacklogResponseDTO sprint = sprintService.getActiveSprint(projectId);
         return ResponseEntity.ok(sprint);
     }
 
     @GetMapping("/{sprintId}")
-    public ResponseEntity<SprintBacklog> getSprintById(@PathVariable Long sprintId) {
-        SprintBacklog sprint = sprintService.getSprintById(sprintId);
+    public ResponseEntity<SprintBacklogResponseDTO> getSprintById(@PathVariable Long sprintId) {
+        SprintBacklogResponseDTO sprint = sprintService.getSprintDtoById(sprintId);
         return ResponseEntity.ok(sprint);
     }
 
     @PutMapping("/{sprintId}")
-    public ResponseEntity<SprintBacklog> updateSprint(
+    public ResponseEntity<SprintBacklogResponseDTO> updateSprint(
             @PathVariable Long sprintId,
             @RequestBody SprintUpdateRequest request) {
 
-        SprintBacklog sprint = sprintService.updateSprint(
+        SprintBacklogResponseDTO sprint = sprintService.updateSprint(
                 sprintId,
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getGoal()
+                request
         );
         return ResponseEntity.ok(sprint);
     }
 
     @PostMapping("/{sprintId}/start")
-    public ResponseEntity<SprintBacklog> startSprint(@PathVariable Long sprintId) {
-        SprintBacklog sprint = sprintService.startSprint(sprintId);
+    public ResponseEntity<SprintBacklogResponseDTO> startSprint(@PathVariable Long sprintId) {
+        SprintBacklogResponseDTO sprint = sprintService.startSprint(sprintId);
         return ResponseEntity.ok(sprint);
     }
 
     @PostMapping("/{sprintId}/complete")
-    public ResponseEntity<SprintBacklog> completeSprint(@PathVariable Long sprintId) {
-        SprintBacklog sprint = sprintService.completeSprint(sprintId);
+    public ResponseEntity<SprintBacklogResponseDTO> completeSprint(@PathVariable Long sprintId) {
+        SprintBacklogResponseDTO sprint = sprintService.completeSprint(sprintId);
         return ResponseEntity.ok(sprint);
     }
 
     @PostMapping("/{sprintId}/cancel")
-    public ResponseEntity<SprintBacklog> cancelSprint(@PathVariable Long sprintId) {
-        SprintBacklog sprint = sprintService.cancelSprint(sprintId);
+    public ResponseEntity<SprintBacklogResponseDTO> cancelSprint(@PathVariable Long sprintId) {
+        SprintBacklogResponseDTO sprint = sprintService.cancelSprint(sprintId);
         return ResponseEntity.ok(sprint);
     }
 
@@ -94,27 +85,27 @@ public class SprintController {
 
 
     @PostMapping("/{sprintId}/user-stories/{userStoryId}")
-    public ResponseEntity<SprintBacklog> addUserStoryToSprint(
+    public ResponseEntity<SprintBacklogResponseDTO> addUserStoryToSprint(
             @PathVariable Long sprintId,
             @PathVariable Long userStoryId) {
-        SprintBacklog sprint = sprintService.addUserStoryToSprint(sprintId, userStoryId);
+        SprintBacklogResponseDTO sprint = sprintService.addUserStoryToSprint(sprintId, userStoryId);
         return ResponseEntity.ok(sprint);
     }
 
     @PostMapping("/{sprintId}/user-stories/batch")
-    public ResponseEntity<SprintBacklog> addMultipleUserStoriesToSprint(
+    public ResponseEntity<SprintBacklogResponseDTO> addMultipleUserStoriesToSprint(
             @PathVariable Long sprintId,
             @RequestBody List<Long> userStoryIds) {
-        SprintBacklog sprint = sprintService.addMultipleUserStoriesToSprint(sprintId, userStoryIds);
+        SprintBacklogResponseDTO sprint = sprintService.addMultipleUserStoriesToSprint(sprintId, userStoryIds);
         return ResponseEntity.ok(sprint);
     }
 
     // NOUVEL ENDPOINT: Retirer une User Story d'un Sprint
     @DeleteMapping("/{sprintId}/user-stories/{userStoryId}")
-    public ResponseEntity<SprintBacklog> removeUserStoryFromSprint(
+    public ResponseEntity<SprintBacklogResponseDTO> removeUserStoryFromSprint(
             @PathVariable Long sprintId,
             @PathVariable Long userStoryId) {
-        SprintBacklog sprint = sprintService.removeUserStoryFromSprint(sprintId, userStoryId);
+        SprintBacklogResponseDTO sprint = sprintService.removeUserStoryFromSprint(sprintId, userStoryId);
         return ResponseEntity.ok(sprint);
     }
 
@@ -125,17 +116,17 @@ public class SprintController {
     }
 
     @GetMapping("/project/{projectId}/last")
-    public ResponseEntity<SprintBacklog> getLastSprint(@PathVariable Long projectId) {
-        SprintBacklog sprint = sprintService.getLastSprint(projectId);
+    public ResponseEntity<SprintBacklogResponseDTO> getLastSprint(@PathVariable Long projectId) {
+        SprintBacklogResponseDTO sprint = sprintService.getLastSprint(projectId);
         return ResponseEntity.ok(sprint);
     }
 
     @GetMapping("/project/{projectId}/status/{status}")
-    public ResponseEntity<List<SprintBacklog>> getSprintsByStatus(
+    public ResponseEntity<List<SprintBacklogResponseDTO>> getSprintsByStatus(
             @PathVariable Long projectId,
             @PathVariable SprintStatus status) {
 
-        List<SprintBacklog> sprints = sprintService.getSprintsByStatus(projectId, status);
+        List<SprintBacklogResponseDTO> sprints = sprintService.getSprintsByStatus(projectId, status);
         return ResponseEntity.ok(sprints);
     }
 
@@ -146,12 +137,12 @@ public class SprintController {
     }
 
     @GetMapping("/project/{projectId}/between-dates")
-    public ResponseEntity<List<SprintBacklog>> getSprintsBetweenDates(
+    public ResponseEntity<List<SprintBacklogResponseDTO>> getSprintsBetweenDates(
             @PathVariable Long projectId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        List<SprintBacklog> sprints = sprintService.getSprintsBetweenDates(projectId, startDate, endDate);
+        List<SprintBacklogResponseDTO> sprints = sprintService.getSprintsBetweenDates(projectId, startDate, endDate);
         return ResponseEntity.ok(sprints);
     }
 
@@ -172,21 +163,19 @@ public class SprintController {
     }
 
     @GetMapping("/project/{projectId}/incomplete-stories")
-    public ResponseEntity<List<SprintBacklog>> getSprintsWithIncompleteStories(@PathVariable Long projectId) {
-        List<SprintBacklog> sprints = sprintService.getSprintsWithIncompleteStories(projectId);
+    public ResponseEntity<List<SprintBacklogResponseDTO>> getSprintsWithIncompleteStories(@PathVariable Long projectId) {
+        List<SprintBacklogResponseDTO> sprints = sprintService.getSprintsWithIncompleteStories(projectId);
         return ResponseEntity.ok(sprints);
     }
 
     @PostMapping("/{sprintId}/clone")
-    public ResponseEntity<SprintBacklog> cloneSprint(
+    public ResponseEntity<SprintBacklogResponseDTO> cloneSprint(
             @PathVariable Long sprintId,
             @RequestBody SprintCloneRequest request) {
 
-        SprintBacklog sprint = sprintService.cloneSprint(
+        SprintBacklogResponseDTO sprint = sprintService.cloneSprint(
                 sprintId,
-                request.getNewSprintNumber(),
-                request.getNewStartDate(),
-                request.getNewEndDate()
+                request
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(sprint);
     }

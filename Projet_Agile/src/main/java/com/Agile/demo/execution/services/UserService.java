@@ -1,5 +1,7 @@
 package com.Agile.demo.execution.services;
 
+import com.Agile.demo.execution.dto.mapper.UserMapper;
+import com.Agile.demo.execution.dto.user.*;
 import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
 import com.Agile.demo.execution.repositories.UserRepository;
@@ -20,175 +22,239 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
-    public User createUser(String username, String email, String password, Set<Role> roles,
-                           String firstName, String lastName, String phoneNumber) {
+    // ==================== CRÉATION ====================
 
-        if (userRepository.existsByUsername(username)) {
-            throw new IllegalArgumentException("Le nom d'utilisateur existe déjà: " + username);
+    public UserResponseDTO createUser(CreateUserRequest request) {
+        validateUserCreation(request);
+
+        User user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
+    }
+
+    private void validateUserCreation(CreateUserRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new IllegalArgumentException("Le nom d'utilisateur existe déjà: " + request.getUsername());
         }
 
-
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("L'email existe déjà: " + email);
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("L'email existe déjà: " + request.getEmail());
         }
 
-
-        if (!isValidEmail(email)) {
-            throw new IllegalArgumentException("Format d'email invalide: " + email);
+        if (!isValidEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Format d'email invalide: " + request.getEmail());
         }
 
-
-        if (roles == null || roles.isEmpty()) {
+        if (request.getRoles() == null || request.getRoles().isEmpty()) {
             throw new IllegalArgumentException("Au moins un rôle doit être spécifié");
         }
-
-        User user = User.builder()
-                .username(username)
-                .email(email)
-                .password(passwordEncoder.encode(password))
-                .roles(new HashSet<>(roles))
-                .firstName(firstName)
-                .lastName(lastName)
-                .phoneNumber(phoneNumber)
-                .isActive(true)
-                .passwordResetRequired(false)
-                .build();
-
-        return userRepository.save(user);
     }
 
-    public User createUser(String username, String email, String password, Role role,
-                           String firstName, String lastName, String phoneNumber) {
-        return createUser(username, email, password, Set.of(role), firstName, lastName, phoneNumber);
+    // ==================== LECTURE ====================
+
+    @Transactional(readOnly = true)
+    public UserResponseDTO getUserById(Long userId) {
+        User user = findUserByIdOrThrow(userId);
+        return userMapper.toResponseDTO(user);
     }
 
     @Transactional(readOnly = true)
-    public User getUserById(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'ID: " + userId));
-    }
-
-    @Transactional(readOnly = true)
-    public User getUserByUsername(String username) {
-        return userRepository.findByUsername(username)
+    public UserResponseDTO getUserByUsername(String username) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé: " + username));
+        return userMapper.toResponseDTO(user);
     }
 
     @Transactional(readOnly = true)
-    public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
+    public UserResponseDTO getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'email: " + email));
+        return userMapper.toResponseDTO(user);
     }
 
     @Transactional(readOnly = true)
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserResponseDTO> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return userMapper.toResponseDTOList(users);
     }
 
     @Transactional(readOnly = true)
-    public List<User> getUsersByRole(Role role) {
-        return userRepository.findByRole(role);
-    }
-
-    // ✅ NOUVEAU : Recherche par plusieurs rôles
-    @Transactional(readOnly = true)
-    public List<User> getUsersByRoles(List<Role> roles) {
-        return userRepository.findByRolesIn(roles);
+    public List<UserResponseDTO> getUsersByRole(Role role) {
+        List<User> users = userRepository.findByRole(role);
+        return userMapper.toResponseDTOList(users);
     }
 
     @Transactional(readOnly = true)
-    public List<User> getUsersByProject(Long projectId) {
-        return userRepository.findUsersByProjectId(projectId);
+    public List<UserResponseDTO> getUsersByRoles(List<Role> roles) {
+        List<User> users = userRepository.findByRolesIn(roles);
+        return userMapper.toResponseDTOList(users);
     }
 
-    // ✅ MODIFIÉ : Gestion des rôles multiples
-    public User updateUser(Long userId, String email, Set<Role> roles, String firstName,
-                           String lastName, String phoneNumber, Boolean isActive) {
-        User user = getUserById(userId);
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getUsersByProject(Long projectId) {
+        List<User> users = userRepository.findUsersByProjectId(projectId);
+        return userMapper.toResponseDTOList(users);
+    }
 
-        if (email != null && !email.equals(user.getEmail())) {
-            if (userRepository.existsByEmail(email)) {
-                throw new IllegalArgumentException("L'email existe déjà: " + email);
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getActiveUsers() {
+        List<User> users = userRepository.findByIsActiveTrue();
+        return userMapper.toResponseDTOList(users);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getActiveUsersByRole(Role role) {
+        List<User> users = userRepository.findByRoleAndIsActiveTrue(role);
+        return userMapper.toResponseDTOList(users);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> searchUsers(String searchTerm) {
+        List<User> users = userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                searchTerm, searchTerm);
+        return userMapper.toResponseDTOList(users);
+    }
+
+    // ==================== MISE À JOUR ====================
+
+    public UserResponseDTO updateUser(Long userId, UserUpdateRequest request) {
+        User user = findUserByIdOrThrow(userId);
+
+        validateUserUpdate(user, request);
+        userMapper.updateEntityFromDTO(request, user);
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
+    }
+
+    private void validateUserUpdate(User user, UserUpdateRequest request) {
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("L'email existe déjà: " + request.getEmail());
             }
-            if (!isValidEmail(email)) {
-                throw new IllegalArgumentException("Format d'email invalide: " + email);
+            if (!isValidEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Format d'email invalide: " + request.getEmail());
             }
-            user.setEmail(email);
+        }
+    }
+
+    public UserResponseDTO updateUserProfile(Long userId, UserProfileUpdateRequest request) {
+        User user = findUserByIdOrThrow(userId);
+
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("L'email existe déjà: " + request.getEmail());
+            }
+            if (!isValidEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Format d'email invalide: " + request.getEmail());
+            }
+            user.setEmail(request.getEmail());
         }
 
-        if (roles != null && !roles.isEmpty()) {
-            user.setRoles(new HashSet<>(roles));
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
+    }
+
+    public UserResponseDTO updatePassword(Long userId, PasswordUpdateRequest request) {
+        User user = findUserByIdOrThrow(userId);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Mot de passe actuel incorrect");
         }
-        if (firstName != null) user.setFirstName(firstName);
-        if (lastName != null) user.setLastName(lastName);
-        if (phoneNumber != null) user.setPhoneNumber(phoneNumber);
-        if (isActive != null) user.setisActive(isActive);
 
-        return userRepository.save(user);
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
+            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 8 caractères");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
     }
 
-    // ✅ NOUVEAU : Méthode de compatibilité pour un seul rôle
-    public User updateUser(Long userId, String email, Role role, String firstName,
-                           String lastName, String phoneNumber, Boolean isActive) {
-        return updateUser(userId, email, role != null ? Set.of(role) : null,
-                firstName, lastName, phoneNumber, isActive);
+    public UserResponseDTO resetPassword(Long userId, PasswordResetRequest request) {
+        User user = findUserByIdOrThrow(userId);
+
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
+            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 8 caractères");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordResetRequired(true);
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
     }
 
-    // ✅ NOUVEAU : Ajouter un rôle à un utilisateur
-    public User addRoleToUser(Long userId, Role role) {
-        User user = getUserById(userId);
-        user.addRole(role);
-        return userRepository.save(user);
+    // ==================== GESTION DES RÔLES ====================
+
+    public UserResponseDTO addRoleToUser(Long userId, RoleManagementRequest request) {
+        User user = findUserByIdOrThrow(userId);
+        user.addRole(request.getRole());
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
     }
 
-    // ✅ NOUVEAU : Retirer un rôle à un utilisateur
-    public User removeRoleFromUser(Long userId, Role role) {
-        User user = getUserById(userId);
+    public UserResponseDTO removeRoleFromUser(Long userId, RoleManagementRequest request) {
+        User user = findUserByIdOrThrow(userId);
 
         if (user.getRoles().size() <= 1) {
             throw new IllegalStateException("Un utilisateur doit avoir au moins un rôle");
         }
 
-        user.removeRole(role);
-        return userRepository.save(user);
+        user.removeRole(request.getRole());
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
     }
 
-    // ✅ NOUVEAU : Vérifier si un utilisateur a un rôle
     @Transactional(readOnly = true)
     public boolean userHasRole(Long userId, Role role) {
-        User user = getUserById(userId);
+        User user = findUserByIdOrThrow(userId);
         return user.hasRole(role);
     }
 
-    // ✅ NOUVEAU : Vérifier si un utilisateur a au moins un des rôles
     @Transactional(readOnly = true)
     public boolean userHasAnyRole(Long userId, Role... roles) {
-        User user = getUserById(userId);
+        User user = findUserByIdOrThrow(userId);
         return user.hasAnyRole(roles);
     }
 
-    public User updatePassword(Long userId, String currentPassword, String newPassword) {
-        User user = getUserById(userId);
+    // ==================== ACTIVATION / DÉSACTIVATION ====================
 
-        // Vérifier l'ancien mot de passe
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new IllegalArgumentException("Mot de passe actuel incorrect");
-        }
+    public UserResponseDTO activateUser(Long userId) {
+        User user = findUserByIdOrThrow(userId);
+        user.setisActive(true);
 
-        // Valider le nouveau mot de passe
-        if (newPassword == null || newPassword.length() < 8) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 8 caractères");
-        }
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
     }
 
-    public void deleteUser(Long userId) {
-        User user = getUserById(userId);
+    public UserResponseDTO deactivateUser(Long userId) {
+        User user = findUserByIdOrThrow(userId);
 
-        // Vérifier que l'utilisateur n'a pas de tâches en cours
+        long activeTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS);
+        if (activeTasks > 0) {
+            throw new IllegalStateException("Impossible de désactiver un utilisateur avec des tâches en cours");
+        }
+
+        user.setisActive(false);
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
+    }
+
+    // ==================== SUPPRESSION ====================
+
+    public void deleteUser(Long userId) {
+        User user = findUserByIdOrThrow(userId);
+
         long activeTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS);
         if (activeTasks > 0) {
             throw new IllegalStateException("Impossible de supprimer un utilisateur avec des tâches en cours");
@@ -197,44 +263,11 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    @Transactional(readOnly = true)
-    public List<User> getAvailableUsers(Role role, long maxTasks) {
-        return userRepository.findAvailableUsersByRole(role, maxTasks);
-    }
+    // ==================== STATISTIQUES (Records - pas de DTO) ====================
 
-    @Transactional(readOnly = true)
-    public long countUserActiveTasks(Long userId) {
-        return userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS) +
-                userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean userExists(Long userId) {
-        return userRepository.existsById(userId);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean usernameExists(String username) {
-        return userRepository.existsByUsername(username);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean emailExists(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    private boolean isValidEmail(String email) {
-        if (email == null || email.trim().isEmpty()) {
-            return false;
-        }
-        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-        return email.matches(emailRegex);
-    }
-
-    // ✅ MODIFIÉ : UserStatistics avec Set<Role>
     @Transactional(readOnly = true)
     public UserStatistics getUserStatistics(Long userId) {
-        User user = getUserById(userId);
+        User user = findUserByIdOrThrow(userId);
 
         long todoTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO);
         long inProgressTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS);
@@ -254,47 +287,6 @@ public class UserService {
         );
     }
 
-    public User activateUser(Long userId) {
-        User user = getUserById(userId);
-        user.setisActive(true);
-        return userRepository.save(user);
-    }
-
-    public User deactivateUser(Long userId) {
-        User user = getUserById(userId);
-
-        // Vérifier qu'il n'a pas de tâches en cours
-        long activeTasks = userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS);
-        if (activeTasks > 0) {
-            throw new IllegalStateException("Impossible de désactiver un utilisateur avec des tâches en cours");
-        }
-
-        user.setisActive(false);
-        return userRepository.save(user);
-    }
-
-    @Transactional(readOnly = true)
-    public List<User> getActiveUsers() {
-        return userRepository.findByIsActiveTrue();
-    }
-
-    @Transactional(readOnly = true)
-    public List<User> getActiveUsersByRole(Role role) {
-        return userRepository.findByRoleAndIsActiveTrue(role);
-    }
-
-    @Transactional(readOnly = true)
-    public List<User> searchUsers(String searchTerm) {
-        return userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                searchTerm, searchTerm);
-    }
-
-    @Transactional(readOnly = true)
-    public List<User> getAvailableDevelopers(int maxActiveTasks) {
-        return userRepository.findAvailableUsersByRole(Role.DEVELOPER, maxActiveTasks);
-    }
-
-    // ✅ MODIFIÉ : UserWorkload avec Set<Role>
     @Transactional(readOnly = true)
     public List<UserWorkload> getMostLoadedUsers(int limit) {
         List<User> users = userRepository.findAll();
@@ -316,7 +308,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public TeamWorkload getTeamWorkload(Long projectId) {
-        List<User> teamMembers = getUsersByProject(projectId);
+        List<User> teamMembers = userRepository.findUsersByProjectId(projectId);
 
         int totalMembers = teamMembers.size();
         int activeMembers = (int) teamMembers.stream()
@@ -349,43 +341,27 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public boolean isUserAvailable(Long userId, int maxTaskThreshold) {
-        long activeTasks = countUserActiveTasks(userId);
-        return activeTasks < maxTaskThreshold;
-    }
+    public UserPerformance getUserPerformance(Long userId, LocalDate startDate, LocalDate endDate) {
+        User user = findUserByIdOrThrow(userId);
 
-    @Transactional(readOnly = true)
-    public User getLeastLoadedUserByRole(Role role) {
-        List<User> users = getActiveUsersByRole(role);
+        UserStatistics stats = getUserStatistics(userId);
 
-        return users.stream()
-                .min((u1, u2) -> {
-                    long tasks1 = countUserActiveTasks(u1.getId());
-                    long tasks2 = countUserActiveTasks(u2.getId());
-                    return Long.compare(tasks1, tasks2);
-                })
-                .orElseThrow(() -> new IllegalStateException("Aucun utilisateur disponible avec le rôle: " + role));
-    }
+        int tasksCompletedInPeriod = userRepository.countTasksCompletedByUserBetweenDates(
+                userId, startDate, endDate);
 
-    public User updateUserProfile(Long userId, String email, String firstName,
-                                  String lastName, String phoneNumber) {
-        User user = getUserById(userId);
-
-        if (email != null && !email.equals(user.getEmail())) {
-            if (userRepository.existsByEmail(email)) {
-                throw new IllegalArgumentException("L'email existe déjà: " + email);
-            }
-            if (!isValidEmail(email)) {
-                throw new IllegalArgumentException("Format d'email invalide: " + email);
-            }
-            user.setEmail(email);
+        int averageTasksPerWeek = 0;
+        long weeksBetween = java.time.temporal.ChronoUnit.WEEKS.between(startDate, endDate);
+        if (weeksBetween > 0) {
+            averageTasksPerWeek = (int) (tasksCompletedInPeriod / weeksBetween);
         }
 
-        if (firstName != null) user.setFirstName(firstName);
-        if (lastName != null) user.setLastName(lastName);
-        if (phoneNumber != null) user.setPhoneNumber(phoneNumber);
-
-        return userRepository.save(user);
+        return new UserPerformance(
+                user.getUsername(),
+                user.getRoles(),
+                tasksCompletedInPeriod,
+                averageTasksPerWeek,
+                stats.completionRate()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -398,7 +374,6 @@ public class UserService {
         return roleCount;
     }
 
-    // ✅ NOUVEAU : Statistiques des utilisateurs multi-rôles
     @Transactional(readOnly = true)
     public Map<String, Object> getUserRoleStatistics() {
         List<User> allUsers = userRepository.findAll();
@@ -412,7 +387,6 @@ public class UserService {
                 .filter(u -> u.getRoles().size() == 1)
                 .count());
 
-        // Distribution par nombre de rôles
         Map<Integer, Long> roleCountDistribution = allUsers.stream()
                 .collect(Collectors.groupingBy(
                         u -> u.getRoles().size(),
@@ -420,7 +394,6 @@ public class UserService {
                 ));
         stats.put("roleCountDistribution", roleCountDistribution);
 
-        // Combinaisons de rôles les plus fréquentes
         Map<Set<Role>, Long> roleCombinations = allUsers.stream()
                 .collect(Collectors.groupingBy(
                         User::getRoles,
@@ -431,66 +404,110 @@ public class UserService {
         return stats;
     }
 
-    public User resetPassword(Long userId, String newPassword) {
-        User user = getUserById(userId);
+    // ==================== DISPONIBILITÉ ====================
 
-        if (newPassword == null || newPassword.length() < 8) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 8 caractères");
-        }
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getAvailableUsers(Role role, long maxTasks) {
+        List<User> users = userRepository.findAvailableUsersByRole(role, maxTasks);
+        return userMapper.toResponseDTOList(users);
+    }
 
-        user.setPassword(passwordEncoder.encode(newPassword));
-        user.setPasswordResetRequired(true);
-        return userRepository.save(user);
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getAvailableDevelopers(int maxActiveTasks) {
+        List<User> developers = userRepository.findAvailableUsersByRole(Role.DEVELOPER, maxActiveTasks);
+        return userMapper.toResponseDTOList(developers);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isUserAvailable(Long userId, int maxTaskThreshold) {
+        long activeTasks = countUserActiveTasks(userId);
+        return activeTasks < maxTaskThreshold;
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponseDTO getLeastLoadedUserByRole(Role role) {
+        List<User> users = userRepository.findByRoleAndIsActiveTrue(role);
+
+        User leastLoadedUser = users.stream()
+                .min((u1, u2) -> {
+                    long tasks1 = countUserActiveTasks(u1.getId());
+                    long tasks2 = countUserActiveTasks(u2.getId());
+                    return Long.compare(tasks1, tasks2);
+                })
+                .orElseThrow(() -> new IllegalStateException("Aucun utilisateur disponible avec le rôle: " + role));
+
+        return userMapper.toResponseDTO(leastLoadedUser);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getUsersWithoutTasks(Long projectId) {
+        List<User> projectUsers = userRepository.findUsersByProjectId(projectId);
+
+        List<User> usersWithoutTasks = projectUsers.stream()
+                .filter(user -> countUserActiveTasks(user.getId()) == 0)
+                .toList();
+
+        return userMapper.toResponseDTOList(usersWithoutTasks);
+    }
+
+    // ==================== UTILITAIRES ====================
+
+    @Transactional(readOnly = true)
+    public long countUserActiveTasks(Long userId) {
+        return userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS) +
+                userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean userExists(Long userId) {
+        return userRepository.existsById(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean usernameExists(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean emailExists(String email) {
+        return userRepository.existsByEmail(email);
     }
 
     @Transactional(readOnly = true)
     public boolean requiresPasswordReset(Long userId) {
-        User user = getUserById(userId);
+        User user = findUserByIdOrThrow(userId);
         return user.isPasswordResetRequired();
     }
 
-    public User markPasswordChanged(Long userId) {
-        User user = getUserById(userId);
+    public UserResponseDTO markPasswordChanged(Long userId) {
+        User user = findUserByIdOrThrow(userId);
         user.setPasswordResetRequired(false);
-        return userRepository.save(user);
-    }
 
-    @Transactional(readOnly = true)
-    public UserPerformance getUserPerformance(Long userId, LocalDate startDate, LocalDate endDate) {
-        UserStatistics stats = getUserStatistics(userId);
-
-        int tasksCompletedInPeriod = userRepository.countTasksCompletedByUserBetweenDates(
-                userId, startDate, endDate);
-
-        int averageTasksPerWeek = 0;
-        long weeksBetween = java.time.temporal.ChronoUnit.WEEKS.between(startDate, endDate);
-        if (weeksBetween > 0) {
-            averageTasksPerWeek = (int) (tasksCompletedInPeriod / weeksBetween);
-        }
-
-        return new UserPerformance(
-                stats.username(),
-                stats.roles(),
-                tasksCompletedInPeriod,
-                averageTasksPerWeek,
-                stats.completionRate()
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public List<User> getUsersWithoutTasks(Long projectId) {
-        List<User> projectUsers = getUsersByProject(projectId);
-
-        return projectUsers.stream()
-                .filter(user -> countUserActiveTasks(user.getId()) == 0)
-                .toList();
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
     }
 
     public void sendWelcomeNotification(Long userId) {
-        User user = getUserById(userId);
+        User user = findUserByIdOrThrow(userId);
         System.out.println("Bienvenue " + user.getUsername() + " ! Email envoyé à: " + user.getEmail());
     }
 
+    // ==================== MÉTHODES PRIVÉES ====================
+
+    private User findUserByIdOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'ID: " + userId));
+    }
+
+    private boolean isValidEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+        return email.matches(emailRegex);
+    }
+
+    // ==================== RECORDS (pour statistiques/performance) ====================
 
     public record UserStatistics(
             String username,

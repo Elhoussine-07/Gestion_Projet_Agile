@@ -1,4 +1,4 @@
-package com.Agile.demo.execution.dto;
+package com.Agile.demo.execution.dto.user;
 
 import com.Agile.demo.model.Role;
 import jakarta.validation.constraints.Email;
