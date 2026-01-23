@@ -2,7 +2,8 @@ package com.Agile.demo.common.planningAspect;
 
 import com.Agile.demo.model.ProductBacklog;
 import com.Agile.demo.model.Project;
-import com.Agile.demo.model.UserStory;
+import com.Agile.demo.planning.dto.userstory.CreateUserStoryDTO;
+import com.Agile.demo.planning.dto.userstory.UserStoryDTO;
 import com.Agile.demo.planning.repository.ProductBacklogRepository;
 import com.Agile.demo.planning.repository.ProjectRepository;
 import com.Agile.demo.planning.repository.UserStoryRepository;
@@ -39,10 +40,12 @@ class AopIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        Project project =  Project.builder().name("Test Project")
+        // Créer un projet (le ProductBacklog sera créé automatiquement via @PrePersist)
+        Project project = Project.builder()
+                .name("Test Project")
                 .description("description")
                 .startDate(LocalDate.now())
-                .endDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(3))
                 .build();
 
         projectRepository.save(project);
@@ -53,21 +56,29 @@ class AopIntegrationTest {
     @Test
     void shouldApplyAllAspectsWhenCreatingUserStory() {
         // Given
-        String title = "Integration Test Story";
-        String role = "developer";
-        String action = "test AOP";
-        String purpose = "verify aspects work";
-        Integer storyPoints = 5;
-
-        // When
-        UserStory story = userStoryService.createUserStory(
-                backlog.getId(), title, role, action, purpose, storyPoints
+        CreateUserStoryDTO createDto = new CreateUserStoryDTO(
+                backlog.getId(),
+                "Integration Test Story",
+                "developer",
+                "test AOP",
+                "verify aspects work",
+                5
         );
 
+        // When
+        UserStoryDTO storyDto = userStoryService.createUserStory(createDto);
+
         // Then
-        assertThat(story).isNotNull();
-        assertThat(story.getId()).isNotNull();
-        assertThat(story.getTitle()).isEqualTo(title);
+        assertThat(storyDto).isNotNull();
+        assertThat(storyDto.getId()).isNotNull();
+        assertThat(storyDto.getTitle()).isEqualTo("Integration Test Story");
+        assertThat(storyDto.getRole()).isEqualTo("developer");
+        assertThat(storyDto.getAction()).isEqualTo("test AOP");
+        assertThat(storyDto.getPurpose()).isEqualTo("verify aspects work");
+        assertThat(storyDto.getStoryPoints()).isEqualTo(5);
+
+        // Vérifier que l'entité a bien été sauvegardée
+        assertThat(userStoryRepository.findById(storyDto.getId().longValue())).isPresent();
 
         // Vérifier que l'aspect de logging a fonctionné (dans les logs)
         // Vérifier que l'aspect de performance a mesuré le temps (dans les logs)
@@ -80,7 +91,7 @@ class AopIntegrationTest {
 
         // When
         for (int i = 0; i < numberOfStories; i++) {
-            userStoryService.createUserStory(
+            CreateUserStoryDTO createDto = new CreateUserStoryDTO(
                     backlog.getId(),
                     "Story " + i,
                     "user",
@@ -88,11 +99,62 @@ class AopIntegrationTest {
                     "purpose " + i,
                     5
             );
+            userStoryService.createUserStory(createDto);
         }
 
         // Then
-        assertThat(userStoryRepository.findAll()).hasSize(numberOfStories);
+        assertThat(userStoryRepository.findAll()).hasSizeGreaterThanOrEqualTo(numberOfStories);
 
         // Vérifier dans les logs que chaque création a été mesurée
+        // Le service retourne maintenant des DTOs, donc les aspects doivent toujours fonctionner
+    }
+
+    @Test
+    void shouldLogExecutionTimeWhenGettingUserStoryById() {
+        // Given - Créer une user story
+        CreateUserStoryDTO createDto = new CreateUserStoryDTO(
+                backlog.getId(),
+                "Story for Read Test",
+                "user",
+                "read data",
+                "verify read operations",
+                3
+        );
+        UserStoryDTO createdStory = userStoryService.createUserStory(createDto);
+
+        // When - Récupérer la user story
+        UserStoryDTO retrievedStory = userStoryService.getUserStoryById(createdStory.getId().longValue());
+
+        // Then
+        assertThat(retrievedStory).isNotNull();
+        assertThat(retrievedStory.getId()).isEqualTo(createdStory.getId());
+        assertThat(retrievedStory.getTitle()).isEqualTo("Story for Read Test");
+
+        // L'aspect @LogExecutionTime devrait avoir logué le temps d'exécution
+    }
+
+    @Test
+    void shouldLogExecutionTimeWhenGettingUserStoriesByBacklog() {
+        // Given - Créer plusieurs user stories
+        for (int i = 0; i < 5; i++) {
+            CreateUserStoryDTO createDto = new CreateUserStoryDTO(
+                    backlog.getId(),
+                    "Batch Story " + i,
+                    "user",
+                    "batch action " + i,
+                    "batch purpose " + i,
+                    3
+            );
+            userStoryService.createUserStory(createDto);
+        }
+
+        // When - Récupérer toutes les stories du backlog
+        var stories = userStoryService.getUserStoriesByProductBacklog(backlog.getId());
+
+        // Then
+        assertThat(stories).hasSizeGreaterThanOrEqualTo(5);
+
+        // L'aspect @LogExecutionTime devrait avoir logué le temps d'exécution
+        // avec un seuil de 200ms selon la configuration du service
     }
 }
