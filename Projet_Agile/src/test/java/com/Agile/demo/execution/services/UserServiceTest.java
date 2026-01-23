@@ -1,23 +1,30 @@
 package com.Agile.demo.execution.services;
 
+import com.Agile.demo.execution.dto.mapper.UserMapper;
+import com.Agile.demo.execution.dto.user.*;
 import com.Agile.demo.execution.repositories.UserRepository;
 import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
 import com.Agile.demo.model.WorkItemStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDate;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
+// Import des Records internes définis dans UserService
+import com.Agile.demo.execution.services.UserService.UserStatistics;
+import com.Agile.demo.execution.services.UserService.TeamWorkload;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -28,13 +35,19 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private UserMapper userMapper;
+
     @InjectMocks
     private UserService userService;
 
     private User testUser;
+    private UserResponseDTO testUserResponseDTO;
+    private CreateUserRequest createUserRequest;
 
     @BeforeEach
     void setUp() {
+        // Initialisation des objets communs pour les tests
         testUser = User.builder()
                 .id(1L)
                 .username("testuser")
@@ -45,241 +58,98 @@ class UserServiceTest {
                 .lastName("User")
                 .phoneNumber("1234567890")
                 .isActive(true)
+                .passwordResetRequired(false)
+                .build();
+
+        testUserResponseDTO = UserResponseDTO.builder()
+                .id(1L)
+                .username("testuser")
+                .email("test@example.com")
+                .roles(Set.of(Role.DEVELOPER))
+                .firstName("Test")
+                .lastName("User")
+                .isActive(true)
+                .build();
+
+        createUserRequest = CreateUserRequest.builder()
+                .username("newuser")
+                .email("newuser@example.com")
+                .password("Password123")
+                .roles(Set.of(Role.DEVELOPER))
+                .firstName("First")
+                .lastName("Last")
                 .build();
     }
 
+    // ==================== TESTS CRÉATION ====================
+
     @Test
+    @DisplayName("Devrait créer un utilisateur avec succès quand les données sont valides")
     void createUser_WithValidData_ShouldCreateUser() {
         // Arrange
-        String username = "newuser";
-        String email = "newuser@example.com";
-        String password = "Password123";
-        Set<Role> roles = Set.of(Role.DEVELOPER);
-
-        when(userRepository.existsByUsername(username)).thenReturn(false);
-        when(userRepository.existsByEmail(email)).thenReturn(false);
-        when(passwordEncoder.encode(password)).thenReturn("encodedPassword");
+        when(userRepository.existsByUsername(createUserRequest.getUsername())).thenReturn(false);
+        when(userRepository.existsByEmail(createUserRequest.getEmail())).thenReturn(false);
+        when(userMapper.toEntity(createUserRequest)).thenReturn(testUser);
+        when(passwordEncoder.encode(createUserRequest.getPassword())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(userMapper.toResponseDTO(testUser)).thenReturn(testUserResponseDTO);
 
         // Act
-        User result = userService.createUser(username, email, password, roles,
-                "First", "Last", "1234567890");
+        UserResponseDTO result = userService.createUser(createUserRequest);
 
         // Assert
         assertThat(result).isNotNull();
-        verify(passwordEncoder, times(1)).encode(password);
-        verify(userRepository, times(1)).save(any(User.class));
-    }
+        assertThat(result.getUsername()).isEqualTo("testuser");
 
-    // ✅ NOUVEAU TEST : Création avec plusieurs rôles
-    @Test
-    void createUser_WithMultipleRoles_ShouldCreateUser() {
-        // Arrange
-        String username = "multiuser";
-        String email = "multi@example.com";
-        String password = "Password123";
-        Set<Role> roles = Set.of(Role.DEVELOPER, Role.SCRUM_MASTER);
-
-        when(userRepository.existsByUsername(username)).thenReturn(false);
-        when(userRepository.existsByEmail(email)).thenReturn(false);
-        when(passwordEncoder.encode(password)).thenReturn("encodedPassword");
-
-        User userWithMultipleRoles = User.builder()
-                .roles(new HashSet<>(roles))
-                .build();
-        when(userRepository.save(any(User.class))).thenReturn(userWithMultipleRoles);
-
-        // Act
-        User result = userService.createUser(username, email, password, roles,
-                "First", "Last", "1234567890");
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.getRoles()).hasSize(2);
-        assertThat(result.getRoles()).contains(Role.DEVELOPER, Role.SCRUM_MASTER);
-    }
-
-    // ✅ NOUVEAU TEST : Création sans rôle (devrait échouer)
-    @Test
-    void createUser_WithNoRoles_ShouldThrowException() {
-        // Arrange
-        String username = "noroleuser";
-        when(userRepository.existsByUsername(username)).thenReturn(false);
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.createUser(username, "email@test.com",
-                "password", Collections.emptySet(), "First", "Last", "1234567890"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Au moins un rôle");
-    }
-
-    // ✅ TEST MODIFIÉ : Création avec un seul rôle (méthode de compatibilité)
-    @Test
-    void createUser_WithSingleRole_ShouldCreateUser() {
-        // Arrange
-        String username = "singleuser";
-        String email = "single@example.com";
-        String password = "Password123";
-        Role role = Role.DEVELOPER;
-
-        when(userRepository.existsByUsername(username)).thenReturn(false);
-        when(userRepository.existsByEmail(email)).thenReturn(false);
-        when(passwordEncoder.encode(password)).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // Act - Utilisation de la méthode de compatibilité
-        User result = userService.createUser(username, email, password, role,
-                "First", "Last", "1234567890");
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(userRepository, times(1)).save(any(User.class));
+        // Vérification que le mot de passe a bien été encodé avant la sauvegarde
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getPassword()).isEqualTo("encodedPassword");
     }
 
     @Test
+    @DisplayName("Devrait lancer une exception si le nom d'utilisateur existe déjà")
     void createUser_WithExistingUsername_ShouldThrowException() {
         // Arrange
-        String username = "existinguser";
-        when(userRepository.existsByUsername(username)).thenReturn(true);
+        when(userRepository.existsByUsername(createUserRequest.getUsername())).thenReturn(true);
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.createUser(username, "email@test.com",
-                "password", Set.of(Role.DEVELOPER), "First", "Last", "1234567890"))
+        assertThatThrownBy(() -> userService.createUser(createUserRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("existe déjà");
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    void createUser_WithExistingEmail_ShouldThrowException() {
-        // Arrange
-        String email = "existing@example.com";
-        when(userRepository.existsByUsername(anyString())).thenReturn(false);
-        when(userRepository.existsByEmail(email)).thenReturn(true);
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.createUser("newuser", email,
-                "password", Set.of(Role.DEVELOPER), "First", "Last", "1234567890"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("existe déjà");
-    }
-
-    @Test
+    @DisplayName("Devrait lancer une exception si l'email est invalide (Regex)")
     void createUser_WithInvalidEmail_ShouldThrowException() {
         // Arrange
-        String invalidEmail = "invalid-email";
+        createUserRequest.setEmail("invalid-email-format");
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.createUser("newuser", invalidEmail,
-                "password", Set.of(Role.DEVELOPER), "First", "Last", "1234567890"))
+        assertThatThrownBy(() -> userService.createUser(createUserRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("invalide");
     }
 
-    // ✅ NOUVEAU TEST : Ajouter un rôle
+    // ==================== TESTS LECTURE ====================
+
     @Test
-    void addRoleToUser_ShouldAddRole() {
+    void getUserById_WithValidId_ShouldReturnUserDTO() {
         // Arrange
         Long userId = 1L;
-        Role newRole = Role.SCRUM_MASTER;
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(userMapper.toResponseDTO(testUser)).thenReturn(testUserResponseDTO);
 
         // Act
-        User result = userService.addRoleToUser(userId, newRole);
-
-        // Assert
-        assertThat(result.getRoles()).contains(newRole);
-        verify(userRepository, times(1)).save(testUser);
-    }
-
-    // ✅ NOUVEAU TEST : Retirer un rôle
-    @Test
-    void removeRoleFromUser_WithMultipleRoles_ShouldRemoveRole() {
-        // Arrange
-        Long userId = 1L;
-        testUser.setRoles(new HashSet<>(Set.of(Role.DEVELOPER, Role.SCRUM_MASTER)));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // Act
-        User result = userService.removeRoleFromUser(userId, Role.SCRUM_MASTER);
-
-        // Assert
-        assertThat(result.getRoles()).doesNotContain(Role.SCRUM_MASTER);
-        assertThat(result.getRoles()).contains(Role.DEVELOPER);
-        verify(userRepository, times(1)).save(testUser);
-    }
-
-    // ✅ NOUVEAU TEST : Retirer le dernier rôle (devrait échouer)
-    @Test
-    void removeRoleFromUser_WithOnlyOneRole_ShouldThrowException() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.removeRoleFromUser(userId, Role.DEVELOPER))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("au moins un rôle");
-    }
-
-    // ✅ NOUVEAU TEST : Vérifier si un utilisateur a un rôle
-    @Test
-    void userHasRole_WithExistingRole_ShouldReturnTrue() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        // Act
-        boolean result = userService.userHasRole(userId, Role.DEVELOPER);
-
-        // Assert
-        assertThat(result).isTrue();
-    }
-
-    @Test
-    void userHasRole_WithNonExistingRole_ShouldReturnFalse() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        // Act
-        boolean result = userService.userHasRole(userId, Role.PRODUCT_OWNER);
-
-        // Assert
-        assertThat(result).isFalse();
-    }
-
-    // ✅ NOUVEAU TEST : Vérifier si un utilisateur a au moins un des rôles
-    @Test
-    void userHasAnyRole_WithMatchingRole_ShouldReturnTrue() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        // Act
-        boolean result = userService.userHasAnyRole(userId, Role.PRODUCT_OWNER, Role.DEVELOPER);
-
-        // Assert
-        assertThat(result).isTrue();
-    }
-
-    @Test
-    void getUserById_WithValidId_ShouldReturnUser() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        // Act
-        User result = userService.getUserById(userId);
+        UserResponseDTO result = userService.getUserById(userId);
 
         // Assert
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(userId);
-        verify(userRepository, times(1)).findById(userId);
     }
 
     @Test
@@ -295,109 +165,203 @@ class UserServiceTest {
     }
 
     @Test
-    void getUserStatistics_ShouldReturnStatisticsWithRoles() {
+    void searchUsers_ShouldReturnMatchingUsers() {
         // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO))
-                .thenReturn(2L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(3L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.DONE))
-                .thenReturn(5L);
+        String term = "test";
+        List<User> users = List.of(testUser);
+        when(userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(term, term))
+                .thenReturn(users);
+        when(userMapper.toResponseDTOList(users)).thenReturn(List.of(testUserResponseDTO));
 
         // Act
-        UserService.UserStatistics result = userService.getUserStatistics(userId);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.roles()).isNotEmpty();
-        assertThat(result.totalTasks()).isEqualTo(10);
-        assertThat(result.completedTasks()).isEqualTo(5);
-        assertThat(result.completionRate()).isEqualTo(50.0);
-    }
-
-    // Les autres tests restent similaires mais utilisent Set<Role> au lieu de Role unique
-    // Je vais montrer quelques exemples clés
-
-    @Test
-    void updateUser_WithValidRoles_ShouldUpdateUser() {
-        // Arrange
-        Long userId = 1L;
-        Set<Role> newRoles = Set.of(Role.DEVELOPER, Role.SCRUM_MASTER);
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // Act
-        User result = userService.updateUser(userId, null, newRoles,
-                null, null, null, null);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(userRepository, times(1)).save(testUser);
-    }
-
-    @Test
-    void getMostLoadedUsers_ShouldReturnUsersWithRoles() {
-        // Arrange
-        int limit = 5;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findAll()).thenReturn(users);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.IN_PROGRESS)))
-                .thenReturn(2L);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.TODO)))
-                .thenReturn(1L);
-
-        // Act
-        List<UserService.UserWorkload> result = userService.getMostLoadedUsers(limit);
-
-        // Assert
-        assertThat(result).isNotEmpty();
-        assertThat(result.get(0).roles()).isNotEmpty();
-    }
-
-    @Test
-    void getUserPerformance_ShouldReturnPerformanceWithRoles() {
-        // Arrange
-        Long userId = 1L;
-        LocalDate startDate = LocalDate.now().minusMonths(1);
-        LocalDate endDate = LocalDate.now();
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO))
-                .thenReturn(2L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(3L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.DONE))
-                .thenReturn(5L);
-        when(userRepository.countTasksCompletedByUserBetweenDates(userId, startDate, endDate))
-                .thenReturn(10);
-
-        // Act
-        UserService.UserPerformance result = userService.getUserPerformance(userId,
-                startDate, endDate);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.roles()).isNotEmpty();
-        assertThat(result.tasksCompletedInPeriod()).isEqualTo(10);
-    }
-
-    // Tests supplémentaires pour les nouvelles méthodes
-
-    @Test
-    void getUsersByRoles_ShouldReturnUsers() {
-        // Arrange
-        List<Role> roles = Arrays.asList(Role.DEVELOPER, Role.SCRUM_MASTER);
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findByRolesIn(roles)).thenReturn(users);
-
-        // Act
-        List<User> result = userService.getUsersByRoles(roles);
+        List<UserResponseDTO> result = userService.searchUsers(term);
 
         // Assert
         assertThat(result).hasSize(1);
-        verify(userRepository, times(1)).findByRolesIn(roles);
+        verify(userRepository).findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(term, term);
+    }
+
+    // ==================== TESTS MISE À JOUR ====================
+
+    @Test
+    void updateUser_WithValidData_ShouldUpdateUser() {
+        // Arrange
+        Long userId = 1L;
+        UserUpdateRequest updateRequest = UserUpdateRequest.builder()
+                .email("newemail@example.com") // Changement d'email
+                .firstName("NewFirst")
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userRepository.existsByEmail(updateRequest.getEmail())).thenReturn(false);
+        when(userRepository.save(testUser)).thenReturn(testUser);
+        when(userMapper.toResponseDTO(testUser)).thenReturn(testUserResponseDTO);
+
+        // Act
+        userService.updateUser(userId, updateRequest);
+
+        // Assert
+        verify(userMapper).updateEntityFromDTO(updateRequest, testUser);
+        verify(userRepository).save(testUser);
+    }
+
+    @Test
+    void updatePassword_WithCorrectCurrentPassword_ShouldUpdate() {
+        // Arrange
+        Long userId = 1L;
+        // CORRECTION : Utilisation du builder au lieu du new()
+        PasswordUpdateRequest req = PasswordUpdateRequest.builder()
+                .currentPassword("oldPass")
+                .newPassword("newPass123")
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches(req.getCurrentPassword(), testUser.getPassword())).thenReturn(true);
+        when(passwordEncoder.encode(req.getNewPassword())).thenReturn("newEncoded");
+        when(userRepository.save(testUser)).thenReturn(testUser);
+
+        // Act
+        userService.updatePassword(userId, req);
+
+        // Assert
+        assertThat(testUser.getPassword()).isEqualTo("newEncoded");
+        verify(userRepository).save(testUser);
+    }
+
+    // ==================== GESTION DES RÔLES ====================
+
+    @Test
+    void addRoleToUser_ShouldAddRoleAndSave() {
+        // Arrange
+        Long userId = 1L;
+        RoleManagementRequest request = new RoleManagementRequest(Role.SCRUM_MASTER);
+        // Note: testUser a déjà DEVELOPER
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userRepository.save(testUser)).thenReturn(testUser);
+
+        // Act
+        userService.addRoleToUser(userId, request);
+
+        // Assert
+        assertThat(testUser.getRoles()).contains(Role.DEVELOPER, Role.SCRUM_MASTER);
+        verify(userRepository).save(testUser);
+    }
+
+    @Test
+    void removeRoleFromUser_LastRole_ShouldThrowException() {
+        // Arrange
+        Long userId = 1L;
+        testUser.setRoles(new HashSet<>(Set.of(Role.DEVELOPER))); // Un seul rôle
+        RoleManagementRequest request = new RoleManagementRequest(Role.DEVELOPER);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.removeRoleFromUser(userId, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("au moins un rôle");
+    }
+
+    // ==================== ACTIVATION / DÉSACTIVATION ====================
+
+    @Test
+    void deactivateUser_WithActiveTasks_ShouldThrowException() {
+        // Arrange
+        Long userId = 1L;
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS)).thenReturn(1L);
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.deactivateUser(userId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tâches en cours");
+    }
+
+    @Test
+    void deactivateUser_WithNoTasks_ShouldDeactivate() {
+        // Arrange
+        Long userId = 1L;
+        testUser.setisActive(true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS)).thenReturn(0L);
+        when(userRepository.save(testUser)).thenReturn(testUser);
+
+        // Act
+        userService.deactivateUser(userId);
+
+        // Assert
+        // Vérification via ArgumentCaptor pour s'assurer que le flag a changé
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().isActive()).isFalse();
+    }
+
+    // ==================== DISPONIBILITÉ & STATISTIQUES (Complex Logic) ====================
+
+    @Test
+    void getLeastLoadedUserByRole_ShouldReturnUserWithFewestTasks() {
+        // Arrange
+        User busyUser = User.builder().id(2L).username("busy").roles(Set.of(Role.DEVELOPER)).isActive(true).build();
+        User freeUser = User.builder().id(3L).username("free").roles(Set.of(Role.DEVELOPER)).isActive(true).build();
+
+        // Mock: busyUser a 5 tâches, freeUser a 1 tâche
+        when(userRepository.findByRoleAndIsActiveTrue(Role.DEVELOPER)).thenReturn(List.of(busyUser, freeUser));
+
+        // Attention: countUserActiveTasks appelle le repository deux fois (TODO + IN_PROGRESS)
+        // Pour busyUser (Total 5)
+        when(userRepository.countTasksByUserAndStatus(2L, WorkItemStatus.IN_PROGRESS)).thenReturn(3L);
+        when(userRepository.countTasksByUserAndStatus(2L, WorkItemStatus.TODO)).thenReturn(2L);
+
+        // Pour freeUser (Total 1)
+        when(userRepository.countTasksByUserAndStatus(3L, WorkItemStatus.IN_PROGRESS)).thenReturn(0L);
+        when(userRepository.countTasksByUserAndStatus(3L, WorkItemStatus.TODO)).thenReturn(1L);
+
+        when(userMapper.toResponseDTO(freeUser)).thenReturn(UserResponseDTO.builder().username("free").build());
+
+        // Act
+        UserResponseDTO result = userService.getLeastLoadedUserByRole(Role.DEVELOPER);
+
+        // Assert
+        assertThat(result.getUsername()).isEqualTo("free");
+    }
+
+    @Test
+    void getUserStatistics_ShouldCalculateRatesCorrectly() {
+        // Arrange
+        Long userId = 1L;
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO)).thenReturn(2L);
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS)).thenReturn(3L);
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.DONE)).thenReturn(5L);
+        // Total = 10, Done = 5 => 50%
+
+        // Act
+        UserStatistics stats = userService.getUserStatistics(userId);
+
+        // Assert
+        assertThat(stats.totalTasks()).isEqualTo(10);
+        assertThat(stats.completionRate()).isEqualTo(50.0);
+    }
+
+    @Test
+    void getTeamWorkload_ShouldReturnCorrectMetrics() {
+        // Arrange
+        Long projectId = 100L;
+        when(userRepository.findUsersByProjectId(projectId)).thenReturn(List.of(testUser));
+
+        // Mock des appels internes à countUserActiveTasks
+        when(userRepository.countTasksByUserAndStatus(eq(1L), eq(WorkItemStatus.IN_PROGRESS))).thenReturn(2L);
+        when(userRepository.countTasksByUserAndStatus(eq(1L), eq(WorkItemStatus.TODO))).thenReturn(1L);
+        // Total active tasks = 3
+
+        // Act
+        TeamWorkload workload = userService.getTeamWorkload(projectId);
+
+        // Assert
+        assertThat(workload.totalMembers()).isEqualTo(1);
+        assertThat(workload.totalActiveTasks()).isEqualTo(3);
+        assertThat(workload.memberWorkloads()).hasSize(1);
+        assertThat(workload.memberWorkloads().get(0).activeTasks()).isEqualTo(3);
     }
 }

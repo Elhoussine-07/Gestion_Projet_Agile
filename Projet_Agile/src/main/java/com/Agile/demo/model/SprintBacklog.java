@@ -1,9 +1,6 @@
 package com.Agile.demo.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -16,6 +13,7 @@ import java.util.List;
 @Getter
 @Setter
 @Table(name = "sprint_backlogs")
+@Builder
 public class SprintBacklog extends AbstractBacklog {
 
     @Id
