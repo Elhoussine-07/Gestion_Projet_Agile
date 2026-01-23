@@ -4,68 +4,53 @@ import com.Agile.demo.planning.dto.epic.CreateEpicDTO;
 import com.Agile.demo.planning.dto.epic.EpicDTO;
 import com.Agile.demo.planning.dto.epic.UpdateEpicDTO;
 import com.Agile.demo.planning.service.EpicService;
-import com.Agile.demo.model.Epic;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/epics")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") //autorise toutes les origines à appeler mon endpoint(dangereuse en prod)
+@CrossOrigin(origins = "*")
 public class EpicController {
 
     private final EpicService epicService;
 
     @PostMapping
-    public ResponseEntity<EpicDTO> createEpic(@RequestBody CreateEpicDTO request) {
-        Epic epic = epicService.createEpic(
-                request.getProductBacklogId(),
-                request.getTitle(),
-                request.getDescription()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(EpicDTO.fromEntity(epic));
+    public ResponseEntity<EpicDTO> createEpic(@Valid @RequestBody CreateEpicDTO request) {
+        EpicDTO epicDto = epicService.createEpic(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(epicDto);
     }
 
     @GetMapping
     public ResponseEntity<List<EpicDTO>> getAllEpics() {
-        List<Epic> epics = epicService.getAllEpics();
-        List<EpicDTO> dtos = epics.stream()
-                .map(EpicDTO::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+        List<EpicDTO> epics = epicService.getAllEpics();
+        return ResponseEntity.ok(epics);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<EpicDTO> getEpicById(@PathVariable Long id) {
-        Epic epic = epicService.getEpicById(id);
-        return ResponseEntity.ok(EpicDTO.fromEntity(epic));
+        EpicDTO epic = epicService.getEpicById(id);
+        return ResponseEntity.ok(epic);
     }
 
     @GetMapping("/backlog/{backlogId}")
     public ResponseEntity<List<EpicDTO>> getEpicsByBacklog(@PathVariable Long backlogId) {
-        List<Epic> epics = epicService.getEpicsByProductBacklog(backlogId);
-        List<EpicDTO> dtos = epics.stream()
-                .map(EpicDTO::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+        List<EpicDTO> epics = epicService.getEpicsByProductBacklog(backlogId);
+        return ResponseEntity.ok(epics);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<EpicDTO> updateEpic(
             @PathVariable Long id,
-            @RequestBody UpdateEpicDTO request) {
+            @Valid @RequestBody UpdateEpicDTO request) {
 
-        Epic epic = epicService.updateEpic(
-                id,
-                request.getTitle(),
-                request.getDescription()
-        );
-        return ResponseEntity.ok(EpicDTO.fromEntity(epic));
+        EpicDTO epic = epicService.updateEpic(id, request);
+        return ResponseEntity.ok(epic);
     }
 
     @DeleteMapping("/{id}")
@@ -96,15 +81,5 @@ public class EpicController {
     public ResponseEntity<Integer> getEpicProgress(@PathVariable Long id) {
         int progress = epicService.calculateEpicProgress(id);
         return ResponseEntity.ok(progress);
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(ex.getMessage());
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }

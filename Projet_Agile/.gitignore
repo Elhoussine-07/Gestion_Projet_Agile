@@ -1,12 +1,8 @@
-# IntelliJ IDEA project files
+# IntelliJ IDEA
 .idea/
 *.iml
 
-# Fichiers hors projet
-Spring sécurité/
-README.md
-
-# Build
+# Maven
 target/
 
 # Logs

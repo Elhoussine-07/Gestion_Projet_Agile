@@ -1,6 +1,7 @@
 package com.Agile.demo.planning.dto.productbacklog;
 
 import com.Agile.demo.model.PrioritizationMethod;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,14 +11,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductBacklogDTO {
-    private Long id;
+public class UpdateProductBacklogDTO {
+
+    @Size(min = 3, max = 100, message = "Name must be between 3 and 100 characters")
     private String name;
-    private Long projectId;
-    private String projectName;
-    private Integer totalBusinessValue;
-    private int epicCount;
-    private int userStoryCount;
-    private int unassignedStoryCount;
+
     private PrioritizationMethod selectedMethod;
 }
