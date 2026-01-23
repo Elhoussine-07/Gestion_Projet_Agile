@@ -31,7 +31,7 @@ public class RegisterRequest {
 
     private String firstName;
     private String lastName;
-    @Deprecated
-    private Role role;
+
+    // Un seul champ: liste de rôles (peut contenir 1 ou plusieurs)
     private Set<Role> roles;
 }

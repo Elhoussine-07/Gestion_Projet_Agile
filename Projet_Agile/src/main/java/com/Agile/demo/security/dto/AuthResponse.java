@@ -17,6 +17,5 @@ public class AuthResponse {
     private Long id;
     private String username;
     private String email;
-    private String role;
-    private Set<String> roles;
+    private Set<String> roles;  // Liste de rôles uniquement
 }

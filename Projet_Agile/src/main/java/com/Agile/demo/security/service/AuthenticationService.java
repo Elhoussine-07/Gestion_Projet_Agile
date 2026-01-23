@@ -22,7 +22,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -50,29 +49,25 @@ public class AuthenticationService {
         // Générer token
         String jwt = jwtTokenProvider.generateToken(authentication);
 
-        // Récupérer l'utilisateur
-        User user = userRepository.findByUsername(request.getUsername())
+        // ✅ CHANGEMENT : Utiliser findByUsernameWithRoles
+        User user = userRepository.findByUsernameWithRoles(request.getUsername())
                 .orElseThrow(() -> new BusinessException("User not found"));
 
-        log.info("User {} logged in successfully", request.getUsername());
+        log.info("User {} logged in successfully with roles: {}",
+                request.getUsername(), user.getRoles());
 
-        // ✅ MODIFIÉ : Conversion des rôles en String pour la réponse
         return AuthResponse.builder()
                 .token(jwt)
                 .type("Bearer")
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .role(getRolesAsString(user.getRoles())) // Compatibilité
                 .roles(user.getRoles().stream()
                         .map(Enum::name)
-                        .collect(Collectors.toSet())) // Nouveau champ
+                        .collect(Collectors.toSet()))
                 .build();
     }
 
-    /**
-     * Inscrit un nouvel utilisateur
-     */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         log.info("Attempting registration for user: {}", request.getUsername());
@@ -86,19 +81,18 @@ public class AuthenticationService {
             throw new BusinessException("Email already in use");
         }
 
-        // ✅ MODIFIÉ : Gestion des rôles multiples
+        // Gérer les rôles
         Set<Role> roles = new HashSet<>();
+
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
             roles.addAll(request.getRoles());
-        } else if (request.getRole() != null) {
-            // Compatibilité avec l'ancien champ "role"
-            roles.add(request.getRole());
+            log.info("Roles provided: {}", roles);
         } else {
-            // Rôle par défaut
+            // Rôle par défaut si aucun n'est fourni
             roles.add(Role.DEVELOPER);
+            log.info("No roles provided, using default role: DEVELOPER");
         }
 
-        // Créer l'utilisateur
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -109,51 +103,37 @@ public class AuthenticationService {
                 .isActive(true)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // ✅ VÉRIFICATION : Recharger l'utilisateur avec les rôles
+        User userWithRoles = userRepository.findByIdWithRoles(savedUser.getId())
+                .orElseThrow(() -> new BusinessException("Failed to load saved user"));
+
+        log.info("User {} registered and saved with {} role(s): {}",
+                userWithRoles.getUsername(), userWithRoles.getRoles().size(), userWithRoles.getRoles());
 
         // Générer token
-        String jwt = jwtTokenProvider.generateTokenFromUsername(user.getUsername());
-
-        log.info("User {} registered successfully with roles: {}", request.getUsername(), roles);
+        String jwt = jwtTokenProvider.generateTokenFromUsername(userWithRoles.getUsername());
 
         return AuthResponse.builder()
                 .token(jwt)
                 .type("Bearer")
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .role(getRolesAsString(user.getRoles())) // Compatibilité
-                .roles(user.getRoles().stream()
+                .id(userWithRoles.getId())
+                .username(userWithRoles.getUsername())
+                .email(userWithRoles.getEmail())
+                .roles(userWithRoles.getRoles().stream()
                         .map(Enum::name)
                         .collect(Collectors.toSet()))
                 .build();
     }
 
-    /**
-     * Récupère l'utilisateur actuellement authentifié
-     */
     @Transactional(readOnly = true)
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-        return userRepository.findByUsername(username)
+
+        // ✅ CHANGEMENT : Utiliser findByUsernameWithRoles
+        return userRepository.findByUsernameWithRoles(username)
                 .orElseThrow(() -> new BusinessException("Current user not found"));
-    }
-
-    /**
-     * Convertit Set<Role> en String pour compatibilité
-     * Si plusieurs rôles, retourne le premier (ou on peut joindre avec ",")
-     */
-    private String getRolesAsString(Set<Role> roles) {
-        if (roles == null || roles.isEmpty()) {
-            return Role.DEVELOPER.name();
-        }
-        // Option 1: Retourner le premier rôle
-        // return roles.iterator().next().name();
-
-        // Option 2: Retourner tous les rôles séparés par des virgules
-        return roles.stream()
-                .map(Enum::name)
-                .collect(Collectors.joining(","));
     }
 }
