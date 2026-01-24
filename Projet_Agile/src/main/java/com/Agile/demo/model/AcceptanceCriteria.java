@@ -7,8 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Value Object représentant les critères d'acceptation au format Gherkin
- * Format: Given-When-Then
+ * Scenario: Préparer un café basique
+ *   Given coffee beans sont disponibles
+ *   And water est disponible
+ *   And sugar est disponible
+ *   When we boil water
+ *   Then coffee is ready
  */
 @Embeddable
 @Getter

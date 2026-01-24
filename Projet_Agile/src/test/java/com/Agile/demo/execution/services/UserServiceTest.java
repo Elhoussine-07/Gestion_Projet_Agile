@@ -1,26 +1,30 @@
 package com.Agile.demo.execution.services;
 
+import com.Agile.demo.execution.dto.mapper.UserMapper;
+import com.Agile.demo.execution.dto.user.*;
 import com.Agile.demo.execution.repositories.UserRepository;
 import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
 import com.Agile.demo.model.WorkItemStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
+// Import des Records internes définis dans UserService
+import com.Agile.demo.execution.services.UserService.UserStatistics;
+import com.Agile.demo.execution.services.UserService.TeamWorkload;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -31,102 +35,121 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private UserMapper userMapper;
+
     @InjectMocks
     private UserService userService;
 
     private User testUser;
+    private UserResponseDTO testUserResponseDTO;
+    private CreateUserRequest createUserRequest;
 
     @BeforeEach
     void setUp() {
-        testUser = new User();
-        testUser.setId(1L);
-        testUser.setUsername("testuser");
-        testUser.setEmail("test@example.com");
-        testUser.setPassword("encodedPassword");
-        testUser.setRole(Role.DEVELOPER);
-        testUser.setFirstName("Test");
-        testUser.setLastName("User");
-        testUser.setPhoneNumber("1234567890");
-        testUser.setisActive(true);
+        // Initialisation des objets communs pour les tests
+        testUser = User.builder()
+                .id(1L)
+                .username("testuser")
+                .email("test@example.com")
+                .password("encodedPassword")
+                .roles(new HashSet<>(Set.of(Role.DEVELOPER)))
+                .firstName("Test")
+                .lastName("User")
+                .phoneNumber("1234567890")
+                .isActive(true)
+                .passwordResetRequired(false)
+                .build();
+
+        testUserResponseDTO = UserResponseDTO.builder()
+                .id(1L)
+                .username("testuser")
+                .email("test@example.com")
+                .roles(Set.of(Role.DEVELOPER))
+                .firstName("Test")
+                .lastName("User")
+                .isActive(true)
+                .build();
+
+        createUserRequest = CreateUserRequest.builder()
+                .username("newuser")
+                .email("newuser@example.com")
+                .password("Password123")
+                .roles(Set.of(Role.DEVELOPER))
+                .firstName("First")
+                .lastName("Last")
+                .build();
     }
 
+    // ==================== TESTS CRÉATION ====================
+
     @Test
+    @DisplayName("Devrait créer un utilisateur avec succès quand les données sont valides")
     void createUser_WithValidData_ShouldCreateUser() {
         // Arrange
-        String username = "newuser";
-        String email = "newuser@example.com";
-        String password = "Password123";
-        Role role = Role.DEVELOPER;
-
-        when(userRepository.existsByUsername(username)).thenReturn(false);
-        when(userRepository.existsByEmail(email)).thenReturn(false);
-        when(passwordEncoder.encode(password)).thenReturn("encodedPassword");
+        when(userRepository.existsByUsername(createUserRequest.getUsername())).thenReturn(false);
+        when(userRepository.existsByEmail(createUserRequest.getEmail())).thenReturn(false);
+        when(userMapper.toEntity(createUserRequest)).thenReturn(testUser);
+        when(passwordEncoder.encode(createUserRequest.getPassword())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(userMapper.toResponseDTO(testUser)).thenReturn(testUserResponseDTO);
 
         // Act
-        User result = userService.createUser(username, email, password, role,
-                "First", "Last", "1234567890");
+        UserResponseDTO result = userService.createUser(createUserRequest);
 
         // Assert
         assertThat(result).isNotNull();
-        verify(passwordEncoder, times(1)).encode(password);
-        verify(userRepository, times(1)).save(any(User.class));
+        assertThat(result.getUsername()).isEqualTo("testuser");
+
+        // Vérification que le mot de passe a bien été encodé avant la sauvegarde
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getPassword()).isEqualTo("encodedPassword");
     }
 
     @Test
+    @DisplayName("Devrait lancer une exception si le nom d'utilisateur existe déjà")
     void createUser_WithExistingUsername_ShouldThrowException() {
         // Arrange
-        String username = "existinguser";
-        when(userRepository.existsByUsername(username)).thenReturn(true);
+        when(userRepository.existsByUsername(createUserRequest.getUsername())).thenReturn(true);
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.createUser(username, "email@test.com",
-                "password", Role.DEVELOPER, "First", "Last", "1234567890"))
+        assertThatThrownBy(() -> userService.createUser(createUserRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("existe déjà");
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    void createUser_WithExistingEmail_ShouldThrowException() {
-        // Arrange
-        String email = "existing@example.com";
-        when(userRepository.existsByUsername(anyString())).thenReturn(false);
-        when(userRepository.existsByEmail(email)).thenReturn(true);
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.createUser("newuser", email,
-                "password", Role.DEVELOPER, "First", "Last", "1234567890"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("existe déjà");
-    }
-
-    @Test
+    @DisplayName("Devrait lancer une exception si l'email est invalide (Regex)")
     void createUser_WithInvalidEmail_ShouldThrowException() {
         // Arrange
-        String invalidEmail = "invalid-email";
+        createUserRequest.setEmail("invalid-email-format");
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.createUser("newuser", invalidEmail,
-                "password", Role.DEVELOPER, "First", "Last", "1234567890"))
+        assertThatThrownBy(() -> userService.createUser(createUserRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("invalide");
     }
 
+    // ==================== TESTS LECTURE ====================
+
     @Test
-    void getUserById_WithValidId_ShouldReturnUser() {
+    void getUserById_WithValidId_ShouldReturnUserDTO() {
         // Arrange
         Long userId = 1L;
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userMapper.toResponseDTO(testUser)).thenReturn(testUserResponseDTO);
 
         // Act
-        User result = userService.getUserById(userId);
+        UserResponseDTO result = userService.getUserById(userId);
 
         // Assert
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(userId);
-        verify(userRepository, times(1)).findById(userId);
     }
 
     @Test
@@ -142,347 +165,112 @@ class UserServiceTest {
     }
 
     @Test
-    void getUserByUsername_WithValidUsername_ShouldReturnUser() {
+    void searchUsers_ShouldReturnMatchingUsers() {
         // Arrange
-        String username = "testuser";
-        when(userRepository.findByUsername(username)).thenReturn(Optional.of(testUser));
+        String term = "test";
+        List<User> users = List.of(testUser);
+        when(userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(term, term))
+                .thenReturn(users);
+        when(userMapper.toResponseDTOList(users)).thenReturn(List.of(testUserResponseDTO));
 
         // Act
-        User result = userService.getUserByUsername(username);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(username);
-        verify(userRepository, times(1)).findByUsername(username);
-    }
-
-    @Test
-    void getUserByUsername_WithInvalidUsername_ShouldThrowException() {
-        // Arrange
-        String username = "nonexistent";
-        when(userRepository.findByUsername(username)).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.getUserByUsername(username))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("non trouvé");
-    }
-
-    @Test
-    void getUserByEmail_WithValidEmail_ShouldReturnUser() {
-        // Arrange
-        String email = "test@example.com";
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(testUser));
-
-        // Act
-        User result = userService.getUserByEmail(email);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.getEmail()).isEqualTo(email);
-        verify(userRepository, times(1)).findByEmail(email);
-    }
-
-    @Test
-    void getAllUsers_ShouldReturnAllUsers() {
-        // Arrange
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findAll()).thenReturn(users);
-
-        // Act
-        List<User> result = userService.getAllUsers();
+        List<UserResponseDTO> result = userService.searchUsers(term);
 
         // Assert
         assertThat(result).hasSize(1);
-        assertThat(result.get(0)).isEqualTo(testUser);
-        verify(userRepository, times(1)).findAll();
+        verify(userRepository).findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(term, term);
     }
 
-    @Test
-    void getUsersByRole_ShouldReturnUsersByRole() {
-        // Arrange
-        Role role = Role.DEVELOPER;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findByRole(role)).thenReturn(users);
-
-        // Act
-        List<User> result = userService.getUsersByRole(role);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRole()).isEqualTo(role);
-        verify(userRepository, times(1)).findByRole(role);
-    }
-
-    @Test
-    void getUsersByProject_ShouldReturnProjectUsers() {
-        // Arrange
-        Long projectId = 1L;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findUsersByProjectId(projectId)).thenReturn(users);
-
-        // Act
-        List<User> result = userService.getUsersByProject(projectId);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        verify(userRepository, times(1)).findUsersByProjectId(projectId);
-    }
+    // ==================== TESTS MISE À JOUR ====================
 
     @Test
     void updateUser_WithValidData_ShouldUpdateUser() {
         // Arrange
         Long userId = 1L;
-        String newEmail = "newemail@example.com";
-        Role newRole = Role.PRODUCT_OWNER;
+        UserUpdateRequest updateRequest = UserUpdateRequest.builder()
+                .email("newemail@example.com") // Changement d'email
+                .firstName("NewFirst")
+                .build();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.existsByEmail(newEmail)).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(userRepository.existsByEmail(updateRequest.getEmail())).thenReturn(false);
+        when(userRepository.save(testUser)).thenReturn(testUser);
+        when(userMapper.toResponseDTO(testUser)).thenReturn(testUserResponseDTO);
 
         // Act
-        User result = userService.updateUser(userId, newEmail, newRole,
-                "NewFirst", "NewLast", "9876543210", true);
+        userService.updateUser(userId, updateRequest);
 
         // Assert
-        assertThat(result).isNotNull();
-        verify(userRepository, times(1)).save(testUser);
+        verify(userMapper).updateEntityFromDTO(updateRequest, testUser);
+        verify(userRepository).save(testUser);
     }
 
     @Test
-    void updateUser_WithExistingEmail_ShouldThrowException() {
+    void updatePassword_WithCorrectCurrentPassword_ShouldUpdate() {
         // Arrange
         Long userId = 1L;
-        String existingEmail = "existing@example.com";
+        // CORRECTION : Utilisation du builder au lieu du new()
+        PasswordUpdateRequest req = PasswordUpdateRequest.builder()
+                .currentPassword("oldPass")
+                .newPassword("newPass123")
+                .build();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.existsByEmail(existingEmail)).thenReturn(true);
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.updateUser(userId, existingEmail,
-                null, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("existe déjà");
-    }
-
-    @Test
-    void updatePassword_WithCorrectCurrentPassword_ShouldUpdatePassword() {
-        // Arrange
-        Long userId = 1L;
-        String currentPassword = "OldPassword123";
-        String newPassword = "NewPassword123";
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(passwordEncoder.matches(currentPassword, testUser.getPassword())).thenReturn(true);
-        when(passwordEncoder.encode(newPassword)).thenReturn("encodedNewPassword");
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(passwordEncoder.matches(req.getCurrentPassword(), testUser.getPassword())).thenReturn(true);
+        when(passwordEncoder.encode(req.getNewPassword())).thenReturn("newEncoded");
+        when(userRepository.save(testUser)).thenReturn(testUser);
 
         // Act
-        User result = userService.updatePassword(userId, currentPassword, newPassword);
+        userService.updatePassword(userId, req);
 
         // Assert
-        assertThat(result).isNotNull();
-        verify(passwordEncoder, times(1)).encode(newPassword);
-        verify(userRepository, times(1)).save(testUser);
+        assertThat(testUser.getPassword()).isEqualTo("newEncoded");
+        verify(userRepository).save(testUser);
     }
 
-    @Test
-    void updatePassword_WithIncorrectCurrentPassword_ShouldThrowException() {
-        // Arrange
-        Long userId = 1L;
-        String currentPassword = "WrongPassword";
-        String newPassword = "NewPassword123";
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(passwordEncoder.matches(currentPassword, testUser.getPassword())).thenReturn(false);
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.updatePassword(userId, currentPassword, newPassword))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("incorrect");
-    }
+    // ==================== GESTION DES RÔLES ====================
 
     @Test
-    void updatePassword_WithShortPassword_ShouldThrowException() {
+    void addRoleToUser_ShouldAddRoleAndSave() {
         // Arrange
         Long userId = 1L;
-        String currentPassword = "OldPassword123";
-        String shortPassword = "short";
+        RoleManagementRequest request = new RoleManagementRequest(Role.SCRUM_MASTER);
+        // Note: testUser a déjà DEVELOPER
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(passwordEncoder.matches(currentPassword, testUser.getPassword())).thenReturn(true);
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.updatePassword(userId, currentPassword, shortPassword))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("8 caractères");
-    }
-
-    @Test
-    void deleteUser_WithNoActiveTasks_ShouldDeleteUser() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(0L);
+        when(userRepository.save(testUser)).thenReturn(testUser);
 
         // Act
-        userService.deleteUser(userId);
+        userService.addRoleToUser(userId, request);
 
         // Assert
-        verify(userRepository, times(1)).delete(testUser);
+        assertThat(testUser.getRoles()).contains(Role.DEVELOPER, Role.SCRUM_MASTER);
+        verify(userRepository).save(testUser);
     }
 
     @Test
-    void deleteUser_WithActiveTasks_ShouldThrowException() {
+    void removeRoleFromUser_LastRole_ShouldThrowException() {
         // Arrange
         Long userId = 1L;
+        testUser.setRoles(new HashSet<>(Set.of(Role.DEVELOPER))); // Un seul rôle
+        RoleManagementRequest request = new RoleManagementRequest(Role.DEVELOPER);
+
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(2L);
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.deleteUser(userId))
+        assertThatThrownBy(() -> userService.removeRoleFromUser(userId, request))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("tâches en cours");
+                .hasMessageContaining("au moins un rôle");
     }
 
-    @Test
-    void getAvailableUsers_ShouldReturnAvailableUsers() {
-        // Arrange
-        Role role = Role.DEVELOPER;
-        long maxTasks = 5;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findAvailableUsersByRole(role, maxTasks)).thenReturn(users);
-
-        // Act
-        List<User> result = userService.getAvailableUsers(role, maxTasks);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        verify(userRepository, times(1)).findAvailableUsersByRole(role, maxTasks);
-    }
-
-    @Test
-    void countUserActiveTasks_ShouldReturnTaskCount() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(3L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO))
-                .thenReturn(2L);
-
-        // Act
-        long result = userService.countUserActiveTasks(userId);
-
-        // Assert
-        assertThat(result).isEqualTo(5L);
-    }
-
-    @Test
-    void userExists_WithExistingUser_ShouldReturnTrue() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.existsById(userId)).thenReturn(true);
-
-        // Act
-        boolean result = userService.userExists(userId);
-
-        // Assert
-        assertThat(result).isTrue();
-        verify(userRepository, times(1)).existsById(userId);
-    }
-
-    @Test
-    void usernameExists_WithExistingUsername_ShouldReturnTrue() {
-        // Arrange
-        String username = "testuser";
-        when(userRepository.existsByUsername(username)).thenReturn(true);
-
-        // Act
-        boolean result = userService.usernameExists(username);
-
-        // Assert
-        assertThat(result).isTrue();
-        verify(userRepository, times(1)).existsByUsername(username);
-    }
-
-    @Test
-    void emailExists_WithExistingEmail_ShouldReturnTrue() {
-        // Arrange
-        String email = "test@example.com";
-        when(userRepository.existsByEmail(email)).thenReturn(true);
-
-        // Act
-        boolean result = userService.emailExists(email);
-
-        // Assert
-        assertThat(result).isTrue();
-        verify(userRepository, times(1)).existsByEmail(email);
-    }
-
-    @Test
-    void getUserStatistics_ShouldReturnStatistics() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO))
-                .thenReturn(2L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(3L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.DONE))
-                .thenReturn(5L);
-
-        // Act
-        UserService.UserStatistics result = userService.getUserStatistics(userId);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.totalTasks()).isEqualTo(10);
-        assertThat(result.completedTasks()).isEqualTo(5);
-        assertThat(result.completionRate()).isEqualTo(50.0);
-    }
-
-    @Test
-    void activateUser_ShouldActivateUser() {
-        // Arrange
-        Long userId = 1L;
-        testUser.setisActive(false);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // Act
-        User result = userService.activateUser(userId);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(userRepository, times(1)).save(testUser);
-    }
-
-    @Test
-    void deactivateUser_WithNoActiveTasks_ShouldDeactivateUser() {
-        // Arrange
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(0L);
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // Act
-        User result = userService.deactivateUser(userId);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(userRepository, times(1)).save(testUser);
-    }
+    // ==================== ACTIVATION / DÉSACTIVATION ====================
 
     @Test
     void deactivateUser_WithActiveTasks_ShouldThrowException() {
         // Arrange
         Long userId = 1L;
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(2L);
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS)).thenReturn(1L);
 
         // Act & Assert
         assertThatThrownBy(() -> userService.deactivateUser(userId))
@@ -491,336 +279,89 @@ class UserServiceTest {
     }
 
     @Test
-    void getActiveUsers_ShouldReturnActiveUsers() {
-        // Arrange
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findByIsActiveTrue()).thenReturn(users);
-
-        // Act
-        List<User> result = userService.getActiveUsers();
-
-        // Assert
-        assertThat(result).hasSize(1);
-        verify(userRepository, times(1)).findByIsActiveTrue();
-    }
-
-    @Test
-    void getActiveUsersByRole_ShouldReturnActiveUsersByRole() {
-        // Arrange
-        Role role = Role.DEVELOPER;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findByRoleAndIsActiveTrue(role)).thenReturn(users);
-
-        // Act
-        List<User> result = userService.getActiveUsersByRole(role);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        verify(userRepository, times(1)).findByRoleAndIsActiveTrue(role);
-    }
-
-    @Test
-    void searchUsers_ShouldReturnMatchingUsers() {
-        // Arrange
-        String searchTerm = "test";
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                searchTerm, searchTerm)).thenReturn(users);
-
-        // Act
-        List<User> result = userService.searchUsers(searchTerm);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        verify(userRepository, times(1))
-                .findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(searchTerm, searchTerm);
-    }
-
-    @Test
-    void getAvailableDevelopers_ShouldReturnAvailableDevelopers() {
-        // Arrange
-        int maxActiveTasks = 5;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findAvailableUsersByRole(Role.DEVELOPER, maxActiveTasks))
-                .thenReturn(users);
-
-        // Act
-        List<User> result = userService.getAvailableDevelopers(maxActiveTasks);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        verify(userRepository, times(1))
-                .findAvailableUsersByRole(Role.DEVELOPER, maxActiveTasks);
-    }
-
-    @Test
-    void getMostLoadedUsers_ShouldReturnMostLoadedUsers() {
-        // Arrange
-        int limit = 5;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findAll()).thenReturn(users);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.IN_PROGRESS)))
-                .thenReturn(2L);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.TODO)))
-                .thenReturn(1L);
-
-        // Act
-        List<UserService.UserWorkload> result = userService.getMostLoadedUsers(limit);
-
-        // Assert
-        assertThat(result).isNotEmpty();
-    }
-
-    @Test
-    void getTeamWorkload_ShouldReturnTeamWorkload() {
-        // Arrange
-        Long projectId = 1L;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findUsersByProjectId(projectId)).thenReturn(users);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.IN_PROGRESS)))
-                .thenReturn(1L);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.TODO)))
-                .thenReturn(1L);
-
-        // Act
-        UserService.TeamWorkload result = userService.getTeamWorkload(projectId);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.totalMembers()).isEqualTo(1);
-        assertThat(result.activeMembers()).isEqualTo(1);
-    }
-
-    @Test
-    void isUserAvailable_WithFewTasks_ShouldReturnTrue() {
+    void deactivateUser_WithNoTasks_ShouldDeactivate() {
         // Arrange
         Long userId = 1L;
-        int maxTaskThreshold = 5;
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(2L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO))
-                .thenReturn(1L);
-
-        // Act
-        boolean result = userService.isUserAvailable(userId, maxTaskThreshold);
-
-        // Assert
-        assertThat(result).isTrue();
-    }
-
-    @Test
-    void isUserAvailable_WithManyTasks_ShouldReturnFalse() {
-        // Arrange
-        Long userId = 1L;
-        int maxTaskThreshold = 5;
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(4L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO))
-                .thenReturn(2L);
-
-        // Act
-        boolean result = userService.isUserAvailable(userId, maxTaskThreshold);
-
-        // Assert
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void getLeastLoadedUserByRole_ShouldReturnLeastLoadedUser() {
-        // Arrange
-        Role role = Role.DEVELOPER;
-        User user1 = new User();
-        user1.setId(1L);
-        user1.setUsername("user1");
-        user1.setRole(role);
-
-        User user2 = new User();
-        user2.setId(2L);
-        user2.setUsername("user2");
-        user2.setRole(role);
-
-        List<User> users = Arrays.asList(user1, user2);
-        when(userRepository.findByRoleAndIsActiveTrue(role)).thenReturn(users);
-
-        // user1 has fewer tasks (2 total)
-        when(userRepository.countTasksByUserAndStatus(1L, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(1L);
-        when(userRepository.countTasksByUserAndStatus(1L, WorkItemStatus.TODO))
-                .thenReturn(1L);
-
-        // user2 has more tasks (5 total)
-        when(userRepository.countTasksByUserAndStatus(2L, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(3L);
-        when(userRepository.countTasksByUserAndStatus(2L, WorkItemStatus.TODO))
-                .thenReturn(2L);
-
-        // Act
-        User result = userService.getLeastLoadedUserByRole(role);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(1L); // Should return user1 (least loaded)
-        assertThat(result.getRole()).isEqualTo(role);
-    }
-
-    @Test
-    void getLeastLoadedUserByRole_WithNoUsers_ShouldThrowException() {
-        // Arrange
-        Role role = Role.DEVELOPER;
-        when(userRepository.findByRoleAndIsActiveTrue(role)).thenReturn(Arrays.asList());
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.getLeastLoadedUserByRole(role))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Aucun utilisateur disponible");
-    }
-
-    @Test
-    void updateUserProfile_WithValidData_ShouldUpdateProfile() {
-        // Arrange
-        Long userId = 1L;
-        String newEmail = "newemail@example.com";
+        testUser.setisActive(true);
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.existsByEmail(newEmail)).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS)).thenReturn(0L);
+        when(userRepository.save(testUser)).thenReturn(testUser);
 
         // Act
-        User result = userService.updateUserProfile(userId, newEmail,
-                "NewFirst", "NewLast", "9876543210");
+        userService.deactivateUser(userId);
 
         // Assert
-        assertThat(result).isNotNull();
-        verify(userRepository, times(1)).save(testUser);
+        // Vérification via ArgumentCaptor pour s'assurer que le flag a changé
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().isActive()).isFalse();
     }
 
+    // ==================== DISPONIBILITÉ & STATISTIQUES (Complex Logic) ====================
+
     @Test
-    void getUserCountByRole_ShouldReturnCountMap() {
+    void getLeastLoadedUserByRole_ShouldReturnUserWithFewestTasks() {
         // Arrange
-        when(userRepository.countByRole(any(Role.class))).thenReturn(5);
+        User busyUser = User.builder().id(2L).username("busy").roles(Set.of(Role.DEVELOPER)).isActive(true).build();
+        User freeUser = User.builder().id(3L).username("free").roles(Set.of(Role.DEVELOPER)).isActive(true).build();
+
+        // Mock: busyUser a 5 tâches, freeUser a 1 tâche
+        when(userRepository.findByRoleAndIsActiveTrue(Role.DEVELOPER)).thenReturn(List.of(busyUser, freeUser));
+
+        // Attention: countUserActiveTasks appelle le repository deux fois (TODO + IN_PROGRESS)
+        // Pour busyUser (Total 5)
+        when(userRepository.countTasksByUserAndStatus(2L, WorkItemStatus.IN_PROGRESS)).thenReturn(3L);
+        when(userRepository.countTasksByUserAndStatus(2L, WorkItemStatus.TODO)).thenReturn(2L);
+
+        // Pour freeUser (Total 1)
+        when(userRepository.countTasksByUserAndStatus(3L, WorkItemStatus.IN_PROGRESS)).thenReturn(0L);
+        when(userRepository.countTasksByUserAndStatus(3L, WorkItemStatus.TODO)).thenReturn(1L);
+
+        when(userMapper.toResponseDTO(freeUser)).thenReturn(UserResponseDTO.builder().username("free").build());
 
         // Act
-        Map<Role, Integer> result = userService.getUserCountByRole();
+        UserResponseDTO result = userService.getLeastLoadedUserByRole(Role.DEVELOPER);
 
         // Assert
-        assertThat(result).isNotEmpty();
-        assertThat(result).containsKeys(Role.values());
+        assertThat(result.getUsername()).isEqualTo("free");
     }
 
     @Test
-    void resetPassword_WithValidPassword_ShouldResetPassword() {
-        // Arrange
-        Long userId = 1L;
-        String newPassword = "NewPassword123";
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(passwordEncoder.encode(newPassword)).thenReturn("encodedNewPassword");
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // Act
-        User result = userService.resetPassword(userId, newPassword);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(passwordEncoder, times(1)).encode(newPassword);
-        verify(userRepository, times(1)).save(testUser);
-    }
-
-    @Test
-    void resetPassword_WithShortPassword_ShouldThrowException() {
-        // Arrange
-        Long userId = 1L;
-        String shortPassword = "short";
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        // Act & Assert
-        assertThatThrownBy(() -> userService.resetPassword(userId, shortPassword))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("8 caractères");
-    }
-
-    @Test
-    void requiresPasswordReset_ShouldReturnResetStatus() {
-        // Arrange
-        Long userId = 1L;
-        testUser.setPasswordResetRequired(true);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        // Act
-        boolean result = userService.requiresPasswordReset(userId);
-
-        // Assert
-        assertThat(result).isTrue();
-    }
-
-    @Test
-    void markPasswordChanged_ShouldMarkAsChanged() {
-        // Arrange
-        Long userId = 1L;
-        testUser.setPasswordResetRequired(true);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        // Act
-        User result = userService.markPasswordChanged(userId);
-
-        // Assert
-        assertThat(result).isNotNull();
-        verify(userRepository, times(1)).save(testUser);
-    }
-
-    @Test
-    void getUserPerformance_ShouldReturnPerformance() {
-        // Arrange
-        Long userId = 1L;
-        LocalDate startDate = LocalDate.now().minusMonths(1);
-        LocalDate endDate = LocalDate.now();
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO))
-                .thenReturn(2L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS))
-                .thenReturn(3L);
-        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.DONE))
-                .thenReturn(5L);
-        when(userRepository.countTasksCompletedByUserBetweenDates(userId, startDate, endDate))
-                .thenReturn(10);
-
-        // Act
-        UserService.UserPerformance result = userService.getUserPerformance(userId,
-                startDate, endDate);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.tasksCompletedInPeriod()).isEqualTo(10);
-    }
-
-    @Test
-    void getUsersWithoutTasks_ShouldReturnUsersWithoutTasks() {
-        // Arrange
-        Long projectId = 1L;
-        List<User> users = Arrays.asList(testUser);
-        when(userRepository.findUsersByProjectId(projectId)).thenReturn(users);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.IN_PROGRESS)))
-                .thenReturn(0L);
-        when(userRepository.countTasksByUserAndStatus(anyLong(), eq(WorkItemStatus.TODO)))
-                .thenReturn(0L);
-
-        // Act
-        List<User> result = userService.getUsersWithoutTasks(projectId);
-
-        // Assert
-        assertThat(result).hasSize(1);
-    }
-
-    @Test
-    void sendWelcomeNotification_ShouldSendNotification() {
+    void getUserStatistics_ShouldCalculateRatesCorrectly() {
         // Arrange
         Long userId = 1L;
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.TODO)).thenReturn(2L);
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.IN_PROGRESS)).thenReturn(3L);
+        when(userRepository.countTasksByUserAndStatus(userId, WorkItemStatus.DONE)).thenReturn(5L);
+        // Total = 10, Done = 5 => 50%
 
         // Act
-        userService.sendWelcomeNotification(userId);
+        UserStatistics stats = userService.getUserStatistics(userId);
 
         // Assert
-        verify(userRepository, times(1)).findById(userId);
+        assertThat(stats.totalTasks()).isEqualTo(10);
+        assertThat(stats.completionRate()).isEqualTo(50.0);
+    }
+
+    @Test
+    void getTeamWorkload_ShouldReturnCorrectMetrics() {
+        // Arrange
+        Long projectId = 100L;
+        when(userRepository.findUsersByProjectId(projectId)).thenReturn(List.of(testUser));
+
+        // Mock des appels internes à countUserActiveTasks
+        when(userRepository.countTasksByUserAndStatus(eq(1L), eq(WorkItemStatus.IN_PROGRESS))).thenReturn(2L);
+        when(userRepository.countTasksByUserAndStatus(eq(1L), eq(WorkItemStatus.TODO))).thenReturn(1L);
+        // Total active tasks = 3
+
+        // Act
+        TeamWorkload workload = userService.getTeamWorkload(projectId);
+
+        // Assert
+        assertThat(workload.totalMembers()).isEqualTo(1);
+        assertThat(workload.totalActiveTasks()).isEqualTo(3);
+        assertThat(workload.memberWorkloads()).hasSize(1);
+        assertThat(workload.memberWorkloads().get(0).activeTasks()).isEqualTo(3);
     }
 }

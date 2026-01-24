@@ -2,14 +2,12 @@ package com.Agile.demo.planning.controller;
 
 import com.Agile.demo.planning.dto.userstory.*;
 import com.Agile.demo.planning.service.UserStoryService;
-import com.Agile.demo.model.UserStory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/user-stories")
@@ -21,83 +19,50 @@ public class UserStoryController {
 
     @PostMapping
     public ResponseEntity<UserStoryDTO> createUserStory(@RequestBody CreateUserStoryDTO request) {
-        UserStory story = userStoryService.createUserStory(
-                request.getProductBacklogId(),
-                request.getTitle(),
-                request.getRole(),
-                request.getAction(),
-                request.getPurpose(),
-                request.getStoryPoints()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserStoryDTO.fromEntity(story));
+        UserStoryDTO dto = userStoryService.createUserStory(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
     @PostMapping("/with-criteria")
     public ResponseEntity<UserStoryDTO> createUserStoryWithCriteria(
             @RequestBody CreateUserStoryWithCriteriaDTO request) {
-
-        UserStory story = userStoryService.createUserStoryWithCriteria(
-                request.getProductBacklogId(),
-                request.getTitle(),
-                request.getRole(),
-                request.getAction(),
-                request.getPurpose(),
-                request.getGivenClauses(),
-                request.getWhenClauses(),
-                request.getThenClauses(),
-                request.getStoryPoints()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserStoryDTO.fromEntity(story));
+        UserStoryDTO dto = userStoryService.createUserStoryWithCriteria(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
     @GetMapping
     public ResponseEntity<List<UserStoryDTO>> getAllUserStories() {
-        List<UserStory> stories = userStoryService.getAllUserStories();
-        List<UserStoryDTO> dtos = stories.stream()
-                .map(UserStoryDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<UserStoryDTO> dtos = userStoryService.getAllUserStories();
         return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserStoryDTO> getUserStoryById(@PathVariable Long id) {
-        UserStory story = userStoryService.getUserStoryById(id);
-        return ResponseEntity.ok(UserStoryDTO.fromEntity(story));
+        UserStoryDTO dto = userStoryService.getUserStoryById(id);
+        return ResponseEntity.ok(dto);
     }
 
     @GetMapping("/backlog/{backlogId}")
     public ResponseEntity<List<UserStoryDTO>> getUserStoriesByBacklog(@PathVariable Long backlogId) {
-        List<UserStory> stories = userStoryService.getUserStoriesByProductBacklog(backlogId);
-        List<UserStoryDTO> dtos = stories.stream()
-                .map(UserStoryDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<UserStoryDTO> dtos = userStoryService.getUserStoriesByProductBacklog(backlogId);
         return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/epic/{epicId}")
     public ResponseEntity<List<UserStoryDTO>> getUserStoriesByEpic(@PathVariable Long epicId) {
-        List<UserStory> stories = userStoryService.getUserStoriesByEpic(epicId);
-        List<UserStoryDTO> dtos = stories.stream()
-                .map(UserStoryDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<UserStoryDTO> dtos = userStoryService.getUserStoriesByEpic(epicId);
         return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/backlog/{backlogId}/unassigned")
     public ResponseEntity<List<UserStoryDTO>> getUnassignedStories(@PathVariable Long backlogId) {
-        List<UserStory> stories = userStoryService.getUnassignedStories(backlogId);
-        List<UserStoryDTO> dtos = stories.stream()
-                .map(UserStoryDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<UserStoryDTO> dtos = userStoryService.getUnassignedStories(backlogId);
         return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/backlog/{backlogId}/ready")
     public ResponseEntity<List<UserStoryDTO>> getReadyStories(@PathVariable Long backlogId) {
-        List<UserStory> stories = userStoryService.getReadyStories(backlogId);
-        List<UserStoryDTO> dtos = stories.stream()
-                .map(UserStoryDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<UserStoryDTO> dtos = userStoryService.getReadyStories(backlogId);
         return ResponseEntity.ok(dtos);
     }
 
@@ -105,24 +70,15 @@ public class UserStoryController {
     public ResponseEntity<UserStoryDTO> updateUserStory(
             @PathVariable Long id,
             @RequestBody UpdateUserStoryDTO request) {
-
-        UserStory story = userStoryService.updateUserStory(
-                id,
-                request.getTitle(),
-                request.getRole(),
-                request.getAction(),
-                request.getPurpose(),
-                request.getStoryPoints()
-        );
-        return ResponseEntity.ok(UserStoryDTO.fromEntity(story));
+        UserStoryDTO dto = userStoryService.updateUserStory(id, request);
+        return ResponseEntity.ok(dto);
     }
 
     @PatchMapping("/{id}/priority")
     public ResponseEntity<Void> updatePriority(
             @PathVariable Long id,
             @RequestBody UpdatePriorityDTO request) {
-
-        userStoryService.updatePriority(id, request.getPriority());
+        userStoryService.updatePriority(id, request);
         return ResponseEntity.ok().build();
     }
 
@@ -130,23 +86,16 @@ public class UserStoryController {
     public ResponseEntity<UserStoryDTO> updateAcceptanceCriteria(
             @PathVariable Long id,
             @RequestBody UpdateAcceptanceCriteriaDTO request) {
-
-        UserStory story = userStoryService.updateAcceptanceCriteria(
-                id,
-                request.getGivenClauses(),
-                request.getWhenClauses(),
-                request.getThenClauses()
-        );
-        return ResponseEntity.ok(UserStoryDTO.fromEntity(story));
+        UserStoryDTO dto = userStoryService.updateAcceptanceCriteria(id, request);
+        return ResponseEntity.ok(dto);
     }
 
     @PatchMapping("/{id}/metrics")
     public ResponseEntity<UserStoryDTO> updateMetrics(
             @PathVariable Long id,
             @RequestBody UpdateMetricsDTO request) {
-
-        UserStory story = userStoryService.updateMetrics(id, request.getMetrics());
-        return ResponseEntity.ok(UserStoryDTO.fromEntity(story));
+        UserStoryDTO dto = userStoryService.updateMetrics(id, request);
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/{id}")

@@ -1,13 +1,17 @@
 package com.Agile.demo.planning.service;
 
-import com.Agile.demo.common.planningAspect.LogExecutionTime;
-import com.Agile.demo.common.exception.ResourceNotFoundException;
-import com.Agile.demo.common.exception.ValidationException;
+import com.Agile.demo.aspect.performance.LogExecutionTime;
+import com.Agile.demo.exception.ResourceNotFoundException;
+import com.Agile.demo.exception.ValidationException;
 import com.Agile.demo.model.*;
+import com.Agile.demo.planning.prioritization.IPrioritizationStrategy;
 import com.Agile.demo.planning.prioritization.PrioritizationStrategyProvider;
 import com.Agile.demo.planning.repository.ProductBacklogRepository;
 import com.Agile.demo.execution.repositories.SprintBacklogRepository;
 import com.Agile.demo.planning.repository.UserStoryRepository;
+import com.Agile.demo.planning.mapper.ProductBacklogMapper;
+import com.Agile.demo.planning.dto.productbacklog.ProductBacklogDTO;
+import com.Agile.demo.planning.dto.productbacklog.UpdateProductBacklogDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +30,7 @@ public class ProductBacklogService {
     private final UserStoryRepository userStoryRepository;
     private final SprintBacklogRepository sprintRepository;
     private final PrioritizationStrategyProvider prioritizationStrategyProvider;
+    private final ProductBacklogMapper productBacklogMapper;
 
     @LogExecutionTime(threshold = 200)
     public ProductBacklog getProductBacklogById(Long id) {
@@ -33,9 +38,40 @@ public class ProductBacklogService {
                 .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog", id));
     }
 
+    @LogExecutionTime(threshold = 200)
+    public ProductBacklogDTO getProductBacklogDtoById(Long id) {
+        ProductBacklog backlog = getProductBacklogById(id);
+        return productBacklogMapper.toDto(backlog);
+    }
+
     public ProductBacklog getProductBacklogByProject(Long projectId) {
         return productBacklogRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog for project " + projectId + " not found"));
+    }
+
+    public ProductBacklogDTO getProductBacklogDtoByProject(Long projectId) {
+        ProductBacklog backlog = getProductBacklogByProject(projectId);
+        return productBacklogMapper.toDto(backlog);
+    }
+
+    /**
+     * Met à jour un ProductBacklog existant
+     * Note: Le ProductBacklog est créé automatiquement avec le Project
+     */
+    @Transactional
+    public ProductBacklogDTO updateProductBacklog(Long id, UpdateProductBacklogDTO updateDto) {
+        log.info("Updating product backlog: {}", id);
+
+        ProductBacklog backlog = getProductBacklogById(id);
+
+        // Mettre à jour l'entité via le mapper
+        productBacklogMapper.updateEntityFromDto(updateDto, backlog);
+
+        // Sauvegarder
+        ProductBacklog updatedBacklog = productBacklogRepository.save(backlog);
+
+        log.info("Product backlog updated: {}", id);
+        return productBacklogMapper.toDto(updatedBacklog);
     }
 
     @LogExecutionTime(threshold = 500)
@@ -86,6 +122,9 @@ public class ProductBacklogService {
 
         // Sauvegarder les stories avec leur nouvelle priorité
         userStoryRepository.saveAll(prioritizedStories);
+
+        // Mettre à jour la méthode sélectionnée
+        backlog.setSelectedMethod(method);
 
         // Calculer et mettre à jour la valeur métier totale
         updateTotalBusinessValue(backlog);
@@ -191,8 +230,7 @@ public class ProductBacklogService {
      * @param story User Story à valider
      */
     private void validateStory(UserStory story) {
-        if (story.getDescription() == null || !story.getDescription().isValid()
-        ) {
+        if (story.getDescription() == null || !story.getDescription().isValid()) {
             throw new ValidationException("User Story must have a description");
         }
 
@@ -236,7 +274,7 @@ public class ProductBacklogService {
                 .mapToInt(UserStory::getStoryPoints)
                 .sum();
 
-        // Vérifier la capacité (en supposant que Sprint a un attribut capacity)
+        // Vérifier la capacité
         Integer sprintCapacity = sprint.getCapacity();
         if (sprintCapacity != null && allocatedPoints + story.getStoryPoints() > sprintCapacity) {
             throw new ValidationException(
@@ -246,7 +284,6 @@ public class ProductBacklogService {
             );
         }
     }
-
 
     @Transactional
     private void updateTotalBusinessValue(ProductBacklog backlog) {

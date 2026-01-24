@@ -1,17 +1,17 @@
 package com.Agile.demo.planning.controller;
 
+import com.Agile.demo.planning.dto.project.AddMemberDTO;
 import com.Agile.demo.planning.dto.project.CreateProjectDTO;
 import com.Agile.demo.planning.dto.project.ProjectDTO;
 import com.Agile.demo.planning.dto.project.UpdateProjectDTO;
 import com.Agile.demo.planning.service.ProjectService;
-import com.Agile.demo.model.Project;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -21,87 +21,101 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
+    /**
+     * Crée un nouveau projet
+     * Le ProductBacklog est créé automatiquement
+     */
     @PostMapping
-    public ResponseEntity<ProjectDTO> createProject(@RequestBody CreateProjectDTO request) {
-        Project project = projectService.createProject(
-                request.getName(),
-                request.getDescription(),
-                request.getStartDate(),
-                request.getEndDate()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(ProjectDTO.fromEntity(project));
+    public ResponseEntity<ProjectDTO> createProject(@Valid @RequestBody CreateProjectDTO createDto) {
+        ProjectDTO dto = projectService.createProject(createDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
+    /**
+     * Récupère tous les projets
+     */
     @GetMapping
     public ResponseEntity<List<ProjectDTO>> getAllProjects() {
-        List<Project> projects = projectService.getAllProjects();
-        List<ProjectDTO> dtos = projects.stream()
-                .map(ProjectDTO::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+        List<ProjectDTO> projects = projectService.getAllProjects();
+        return ResponseEntity.ok(projects);
     }
 
+    /**
+     * Récupère un projet par son ID
+     */
     @GetMapping("/{id}")
     public ResponseEntity<ProjectDTO> getProjectById(@PathVariable Long id) {
-        Project project = projectService.getProjectById(id);
-        return ResponseEntity.ok(ProjectDTO.fromEntity(project));
+        ProjectDTO dto = projectService.getProjectDtoById(id);
+        return ResponseEntity.ok(dto);
     }
 
+    /**
+     * Met à jour un projet existant
+     */
     @PutMapping("/{id}")
     public ResponseEntity<ProjectDTO> updateProject(
             @PathVariable Long id,
-            @RequestBody UpdateProjectDTO request) {
-
-        Project project = projectService.updateProject(
-                id,
-                request.getName(),
-                request.getDescription(),
-                request.getStartDate(),
-                request.getEndDate()
-        );
-        return ResponseEntity.ok(ProjectDTO.fromEntity(project));
+            @Valid @RequestBody UpdateProjectDTO updateDto) {
+        ProjectDTO dto = projectService.updateProject(id, updateDto);
+        return ResponseEntity.ok(dto);
     }
 
+    /**
+     * Supprime un projet
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/members/{userId}")
-    public ResponseEntity<Void> addMemberToProject(
+    /**
+     * Ajoute un membre au projet
+     */
+    @PostMapping("/{id}/members")
+    public ResponseEntity<ProjectDTO> addMemberToProject(
             @PathVariable Long id,
-            @PathVariable Long userId) {
-
-        projectService.addMemberToProject(id, userId);
-        return ResponseEntity.ok().build();
+            @Valid @RequestBody AddMemberDTO addMemberDto) {
+        ProjectDTO dto = projectService.addMemberToProject(id, addMemberDto.getUserId());
+        return ResponseEntity.ok(dto);
     }
 
-    @DeleteMapping("/{id}/members/{userId}")
-    public ResponseEntity<Void> removeMemberFromProject(
+    /**
+     * Retire un membre du projet
+     */
+    @DeleteMapping("/{id}/members")
+    public ResponseEntity<ProjectDTO> removeMemberFromProject(
             @PathVariable Long id,
-            @PathVariable Long userId) {
-
-        projectService.removeMemberFromProject(id, userId);
-        return ResponseEntity.noContent().build();
+            @Valid @RequestBody AddMemberDTO addMemberDTO) {
+        ProjectDTO dto = projectService.removeMemberFromProject(id, addMemberDTO.getUserId());
+        return ResponseEntity.ok(dto);
     }
 
+    /**
+     * Récupère les projets terminés
+     */
     @GetMapping("/completed")
     public ResponseEntity<List<ProjectDTO>> getCompletedProjects() {
-        List<Project> projects = projectService.getCompletedProjects();
-        List<ProjectDTO> dtos = projects.stream()
-                .map(ProjectDTO::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+        List<ProjectDTO> projects = projectService.getCompletedProjects();
+        return ResponseEntity.ok(projects);
     }
 
+    /**
+     * Récupère les projets actifs
+     */
+    @GetMapping("/active")
+    public ResponseEntity<List<ProjectDTO>> getActiveProjects() {
+        List<ProjectDTO> projects = projectService.getActiveProjects();
+        return ResponseEntity.ok(projects);
+    }
+
+    /**
+     * Récupère les projets d'un utilisateur
+     */
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<ProjectDTO>> getProjectsByUser(@PathVariable Long userId) {
-        List<Project> projects = projectService.getProjectsByUser(userId);
-        List<ProjectDTO> dtos = projects.stream()
-                .map(ProjectDTO::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+        List<ProjectDTO> projects = projectService.getProjectsByUser(userId);
+        return ResponseEntity.ok(projects);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

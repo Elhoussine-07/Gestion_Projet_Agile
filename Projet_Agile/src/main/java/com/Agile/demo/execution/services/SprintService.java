@@ -1,10 +1,15 @@
 package com.Agile.demo.execution.services;
 
+import com.Agile.demo.execution.dto.SprintBacklogResponseDTO;
+import com.Agile.demo.execution.dto.SprintCloneRequest;
+import com.Agile.demo.execution.dto.SprintCreateRequest;
+import com.Agile.demo.execution.dto.SprintUpdateRequest;
+import com.Agile.demo.execution.dto.mapper.SprintMapper;
+import com.Agile.demo.model.*;
 import com.Agile.demo.execution.repositories.SprintBacklogRepository;
 import com.Agile.demo.execution.repositories.TaskRepository;
 import com.Agile.demo.planning.repository.ProjectRepository;
 import com.Agile.demo.planning.repository.UserStoryRepository;
-import com.Agile.demo.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,36 +27,35 @@ public class SprintService {
     private final ProjectRepository projectRepository;
     private final UserStoryRepository userStoryRepository;
     private final TaskRepository taskRepository;
+    private final SprintMapper sprintMapper;
 
-    public SprintBacklog createSprint(Long projectId, Integer SprintNumber,
-                                      LocalDate startDate, LocalDate endDate, String goal,
-                                      List<Long> userStoryIds) {
+    public SprintBacklogResponseDTO createSprint(SprintCreateRequest request) {
 
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Projet non trouvé avec l'ID: " + projectId));
+        Project project = projectRepository.findById(request.getProjectId())
+                .orElseThrow(() -> new IllegalArgumentException("Projet non trouvé avec l'ID: " + request.getProjectId()));
 
-        if (sprintBacklogRepository.existsByProjectIdAndSprintNumber(projectId, SprintNumber)) {
-            throw new IllegalStateException("Un sprint avec le numéro " + SprintNumber + " existe déjà pour ce projet");
+        if (sprintBacklogRepository.existsByProjectIdAndSprintNumber(request.getProjectId(), request.getSprintNumber())) {
+            throw new IllegalStateException("Un sprint avec le numéro " + request.getSprintNumber() + " existe déjà pour ce projet");
         }
 
         long activeSprintsCount = sprintBacklogRepository.countByProjectIdAndSprintStatus(
-                projectId, SprintStatus.ACTIVE);
+                request.getProjectId(), SprintStatus.ACTIVE);
         if (activeSprintsCount > 0) {
             throw new IllegalStateException("Un sprint est déjà actif pour ce projet");
         }
 
-        if (endDate.isBefore(startDate)) {
+        if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new IllegalArgumentException("La date de fin doit être après la date de début");
         }
 
-        String sprintName = "Sprint " + SprintNumber;
-        SprintBacklog sprint = new SprintBacklog(sprintName, SprintNumber, startDate, endDate, goal);
+        SprintBacklog sprint = sprintMapper.toEntity(request);
         sprint.setProject(project);
+        sprint.setSprintStatus(SprintStatus.PLANNED);
 
-        if (userStoryIds != null && !userStoryIds.isEmpty()) {
-            List<UserStory> userStories = userStoryRepository.findAllById(userStoryIds);
+        if (request.getUserStoryIds() != null && !request.getUserStoryIds().isEmpty()) {
+            List<UserStory> userStories = userStoryRepository.findAllById(request.getUserStoryIds());
 
-            if (userStories.size() != userStoryIds.size()) {
+            if (userStories.size() != request.getUserStoryIds().size()) {
                 throw new IllegalArgumentException("Une ou plusieurs User Stories n'ont pas été trouvées");
             }
 
@@ -64,49 +68,53 @@ public class SprintService {
             });
         }
 
-        return sprintBacklogRepository.save(sprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(sprint));
     }
 
     @Transactional(readOnly = true)
-    public List<SprintBacklog> getSprintsByProject(Long projectId) {
-        return sprintBacklogRepository.findByProjectId(projectId);
+    public List<SprintBacklogResponseDTO> getSprintsByProject(Long projectId) {
+        List<SprintBacklog> sprints = sprintBacklogRepository.findByProjectId(projectId);
+        return sprintMapper.toDtoList(sprints);
     }
 
     @Transactional(readOnly = true)
-    public SprintBacklog getActiveSprint(Long projectId) {
+    public SprintBacklogResponseDTO getActiveSprint(Long projectId) {
         List<SprintBacklog> active = sprintBacklogRepository.findByProjectIdAndSprintStatus(projectId, SprintStatus.ACTIVE);
-        return active.stream()
+        SprintBacklog sprint = active.stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Aucun sprint actif pour ce projet"));
+        return sprintMapper.toDto(sprint);
     }
 
     @Transactional(readOnly = true)
-    public SprintBacklog getSprintById(Long SprintNumber) {
-        return sprintBacklogRepository.findById(SprintNumber)
-                .orElseThrow(() -> new IllegalArgumentException("Sprint non trouvé avec le Numéro: " + SprintNumber));
+    public SprintBacklogResponseDTO getSprintDtoById(Long sprintId) {
+        return sprintMapper.toDto(getSprintById(sprintId));
     }
 
-    public SprintBacklog updateSprint(Long SprintNumber, LocalDate startDate,
-                                      LocalDate endDate, String goal) {
-        SprintBacklog sprint = getSprintById(SprintNumber);
+    @Transactional(readOnly = true)
+    public SprintBacklog getSprintById(Long sprintId) {
+        return sprintBacklogRepository.findById(sprintId)
+                .orElseThrow(() -> new IllegalArgumentException("Sprint non trouvé avec l'ID: " + sprintId));
+    }
+
+    public SprintBacklogResponseDTO updateSprint(Long sprintId, SprintUpdateRequest request) {
+        SprintBacklog sprint = getSprintById(sprintId);
 
         if (sprint.getSprintStatus() == SprintStatus.COMPLETED ||
                 sprint.getSprintStatus() == SprintStatus.CANCELLED) {
             throw new IllegalStateException("Impossible de modifier un sprint terminé ou annulé");
         }
 
-        if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+        if (request.getStartDate() != null && request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
             throw new IllegalArgumentException("La date de fin doit être après la date de début");
         }
 
-        if (startDate != null) sprint.setStartDate(startDate);
-        if (endDate != null) sprint.setEndDate(endDate);
-        if (goal != null) sprint.setGoal(goal);
+        sprintMapper.updateSprintFromDto(request, sprint);
 
-        return sprintBacklogRepository.save(sprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(sprint));
     }
 
-    public SprintBacklog startSprint(Long sprintId) {
+    public SprintBacklogResponseDTO startSprint(Long sprintId) {
         SprintBacklog sprint = getSprintById(sprintId);
 
         if (sprint.getSprintStatus() != SprintStatus.PLANNED) {
@@ -131,10 +139,10 @@ public class SprintService {
         validateUserStoriesDependencies(sprint);
 
         sprint.startSprint();
-        return sprintBacklogRepository.save(sprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(sprint));
     }
 
-    public SprintBacklog completeSprint(Long sprintId) {
+    public SprintBacklogResponseDTO completeSprint(Long sprintId) {
         SprintBacklog sprint = getSprintById(sprintId);
 
         if (sprint.getSprintStatus() != SprintStatus.ACTIVE) {
@@ -149,13 +157,13 @@ public class SprintService {
 
         moveIncompletedUserStoriesToBacklog(sprint);
 
-        return sprint;
+        return sprintMapper.toDto(sprint);
     }
 
-    public SprintBacklog cancelSprint(Long sprintId) {
+    public SprintBacklogResponseDTO cancelSprint(Long sprintId) {
         SprintBacklog sprint = getSprintById(sprintId);
         sprint.cancelSprint();
-        return sprintBacklogRepository.save(sprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(sprint));
     }
 
     public void deleteSprint(Long sprintId) {
@@ -168,7 +176,7 @@ public class SprintService {
         sprintBacklogRepository.delete(sprint);
     }
 
-    public SprintBacklog addUserStoryToSprint(Long sprintId, Long userStoryId) {
+    public SprintBacklogResponseDTO addUserStoryToSprint(Long sprintId, Long userStoryId) {
         SprintBacklog sprint = getSprintById(sprintId);
 
         UserStory userStory = userStoryRepository.findById(userStoryId)
@@ -206,10 +214,10 @@ public class SprintService {
             task.setSprintBacklog(sprint);
         }
 
-        return sprintBacklogRepository.save(sprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(sprint));
     }
 
-    public SprintBacklog addMultipleUserStoriesToSprint(Long sprintId, List<Long> userStoryIds) {
+    public SprintBacklogResponseDTO addMultipleUserStoriesToSprint(Long sprintId, List<Long> userStoryIds) {
         SprintBacklog sprint = getSprintById(sprintId);
 
         if (sprint.getSprintStatus() == SprintStatus.COMPLETED ||
@@ -251,10 +259,10 @@ public class SprintService {
             }
         }
 
-        return sprintBacklogRepository.save(sprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(sprint));
     }
 
-    public SprintBacklog removeUserStoryFromSprint(Long sprintId, Long userStoryId) {
+    public SprintBacklogResponseDTO removeUserStoryFromSprint(Long sprintId, Long userStoryId) {
         SprintBacklog sprint = getSprintById(sprintId);
 
         UserStory userStory = userStoryRepository.findById(userStoryId)
@@ -282,7 +290,7 @@ public class SprintService {
             task.setSprintBacklog(null);
         }
 
-        return sprintBacklogRepository.save(sprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(sprint));
     }
 
     @Transactional(readOnly = true)
@@ -365,14 +373,16 @@ public class SprintService {
     }
 
     @Transactional(readOnly = true)
-    public SprintBacklog getLastSprint(Long projectId) {
-        return sprintBacklogRepository.findTopByProjectIdOrderBySprintNumberDesc(projectId)
+    public SprintBacklogResponseDTO getLastSprint(Long projectId) {
+        SprintBacklog sprint = sprintBacklogRepository.findTopByProjectIdOrderBySprintNumberDesc(projectId)
                 .orElseThrow(() -> new IllegalStateException("Aucun sprint trouvé pour ce projet"));
+        return sprintMapper.toDto(sprint);
     }
 
     @Transactional(readOnly = true)
-    public List<SprintBacklog> getSprintsByStatus(Long projectId, SprintStatus status) {
-        return sprintBacklogRepository.findByProjectIdAndSprintStatus(projectId, status);
+    public List<SprintBacklogResponseDTO> getSprintsByStatus(Long projectId, SprintStatus status) {
+        List<SprintBacklog> sprints = sprintBacklogRepository.findByProjectIdAndSprintStatus(projectId, status);
+        return sprintMapper.toDtoList(sprints);
     }
 
     @Transactional(readOnly = true)
@@ -394,8 +404,9 @@ public class SprintService {
     }
 
     @Transactional(readOnly = true)
-    public List<SprintBacklog> getSprintsBetweenDates(Long projectId, LocalDate startDate, LocalDate endDate) {
-        return sprintBacklogRepository.findByProjectIdAndStartDateBetween(projectId, startDate, endDate);
+    public List<SprintBacklogResponseDTO> getSprintsBetweenDates(Long projectId, LocalDate startDate, LocalDate endDate) {
+        List<SprintBacklog> sprints = sprintBacklogRepository.findByProjectIdAndStartDateBetween(projectId, startDate, endDate);
+        return sprintMapper.toDtoList(sprints);
     }
 
     public void moveUserStoryBetweenSprints(Long fromSprintId, Long toSprintId, Long userStoryId) {
@@ -446,29 +457,30 @@ public class SprintService {
     }
 
     @Transactional(readOnly = true)
-    public List<SprintBacklog> getSprintsWithIncompleteStories(Long projectId) {
-        return sprintBacklogRepository.findSprintsWithIncompleteStories(projectId);
+    public List<SprintBacklogResponseDTO> getSprintsWithIncompleteStories(Long projectId) {
+        List<SprintBacklog> sprints = sprintBacklogRepository.findSprintsWithIncompleteStories(projectId);
+        return sprintMapper.toDtoList(sprints);
     }
 
-    public SprintBacklog cloneSprint(Long sprintId, Integer newSprintNumber,
-                                     LocalDate newStartDate, LocalDate newEndDate) {
+    public SprintBacklogResponseDTO cloneSprint(Long sprintId, SprintCloneRequest request) {
         SprintBacklog originalSprint = getSprintById(sprintId);
 
         if (sprintBacklogRepository.existsByProjectIdAndSprintNumber(
-                originalSprint.getProject().getId(), newSprintNumber)) {
+                originalSprint.getProject().getId(), request.getNewSprintNumber())) {
             throw new IllegalStateException("Un sprint avec ce numéro existe déjà");
         }
 
         SprintBacklog newSprint = new SprintBacklog(
-                "Sprint " + newSprintNumber,
-                newSprintNumber,
-                newStartDate,
-                newEndDate,
+                "Sprint " + request.getNewSprintNumber(),
+                request.getNewSprintNumber(),
+                request.getNewStartDate(),
+                request.getNewEndDate(),
                 originalSprint.getGoal()
         );
         newSprint.setProject(originalSprint.getProject());
+        newSprint.setSprintStatus(SprintStatus.PLANNED);
 
-        return sprintBacklogRepository.save(newSprint);
+        return sprintMapper.toDto(sprintBacklogRepository.save(newSprint));
     }
 
     private void validateUserStoriesDependencies(SprintBacklog sprint) {
@@ -554,3 +566,4 @@ public class SprintService {
             long totalDays
     ) {}
 }
+

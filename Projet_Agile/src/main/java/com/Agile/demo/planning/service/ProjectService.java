@@ -4,8 +4,13 @@ import com.Agile.demo.execution.repositories.UserRepository;
 import com.Agile.demo.model.Project;
 import com.Agile.demo.model.User;
 import com.Agile.demo.planning.repository.ProjectRepository;
-import com.Agile.demo.common.exception.ResourceNotFoundException;
-import com.Agile.demo.common.exception.BusinessException;
+import com.Agile.demo.planning.mapper.ProjectMapper;
+import com.Agile.demo.planning.dto.project.CreateProjectDTO;
+import com.Agile.demo.planning.dto.project.ProjectDTO;
+import com.Agile.demo.planning.dto.project.UpdateProjectDTO;
+import com.Agile.demo.exception.ResourceNotFoundException;
+import com.Agile.demo.exception.BusinessException;
+import com.Agile.demo.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,61 +20,69 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor  // Lombok génère le constructeur
-@Slf4j  // Lombok génère le logger
-@Transactional(readOnly = true)  // Par défaut, lecture seule
+@RequiredArgsConstructor
+@Slf4j
+@Transactional(readOnly = true)
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final ProjectMapper projectMapper;
 
     /**
      * Crée un nouveau projet
+     * Le ProductBacklog est créé automatiquement via @PrePersist dans l'entité Project
      */
-    @Transactional  // Override pour écriture
-    public Project createProject(String name, String description,
-                                 LocalDate startDate, LocalDate endDate) {
-        log.info("Creating project: {}", name);
+    @Transactional
+    public ProjectDTO createProject(CreateProjectDTO createDto) {
+        log.info("Creating project: {}", createDto.getName());
 
         // Validation métier
-        if (projectRepository.existsByName(name)) {
-            throw new BusinessException("A project with name '" + name + "' already exists");
+        if (projectRepository.existsByName(createDto.getName())) {
+            throw new BusinessException("A project with name '" + createDto.getName() + "' already exists");
         }
 
-        if (endDate.isBefore(startDate)) {
-            throw new BusinessException("End date must be after start date");
+        if (createDto.getEndDate().isBefore(createDto.getStartDate())) {
+            throw new ValidationException("End date must be after start date");
         }
 
-        // Création
-        Project project = Project.builder()
-                .name(name)
-                .description(description)
-                .startDate(startDate)
-                .endDate(endDate)
-                .build();
-        // Le ProductBacklog est créé automatiquement
+        // Conversion DTO -> Entity via mapper
+        Project project = projectMapper.toEntity(createDto);
 
-        Project saved = projectRepository.save(project);
-        log.info("Project created with id: {}", saved.getId());
+        // Sauvegarde (le @PrePersist créera automatiquement le ProductBacklog)
+        Project savedProject = projectRepository.save(project);
 
-        return saved;
+        log.info("Project created with id: {} and ProductBacklog id: {}",
+                savedProject.getId(),
+                savedProject.getProductBacklog().getId());
+
+        return projectMapper.toDto(savedProject);
     }
 
     /**
      * Récupère tous les projets
      */
-    public List<Project> getAllProjects() {
+    public List<ProjectDTO> getAllProjects() {
         log.debug("Fetching all projects");
-        return projectRepository.findAll();
+        List<Project> projects = projectRepository.findAll();
+        return projectMapper.toDtoList(projects);
     }
 
     /**
-     * Récupère un projet par ID
+     * Récupère un projet par ID (retourne l'entité)
      */
     public Project getProjectById(Long id) {
         log.debug("Fetching project with id: {}", id);
         return projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+    }
+
+    /**
+     * Récupère un projet par ID (retourne le DTO)
+     */
+    public ProjectDTO getProjectDtoById(Long id) {
+        Project project = getProjectById(id);
+        return projectMapper.toDto(project);
     }
 
     /**
@@ -82,30 +95,44 @@ public class ProjectService {
     }
 
     /**
+     * Récupère un projet par nom (retourne le DTO)
+     */
+    public ProjectDTO getProjectDtoByName(String name) {
+        Project project = getProjectByName(name);
+        return projectMapper.toDto(project);
+    }
+
+    /**
      * Met à jour un projet
      */
     @Transactional
-    public Project updateProject(Long id, String name, String description,
-                                 LocalDate startDate, LocalDate endDate) {
+    public ProjectDTO updateProject(Long id, UpdateProjectDTO updateDto) {
         log.info("Updating project with id: {}", id);
 
         Project project = getProjectById(id);
 
         // Vérifier si le nouveau nom existe déjà (si changé)
-        if (!project.getName().equals(name) && projectRepository.existsByName(name)) {
-            throw new BusinessException("A project with name '" + name + "' already exists");
+        if (updateDto.getName() != null
+                && !project.getName().equals(updateDto.getName())
+                && projectRepository.existsByName(updateDto.getName())) {
+            throw new BusinessException("A project with name '" + updateDto.getName() + "' already exists");
         }
+
+        // Valider les dates si elles sont fournies
+        LocalDate startDate = updateDto.getStartDate() != null ? updateDto.getStartDate() : project.getStartDate();
+        LocalDate endDate = updateDto.getEndDate() != null ? updateDto.getEndDate() : project.getEndDate();
 
         if (endDate.isBefore(startDate)) {
-            throw new BusinessException("End date must be after start date");
+            throw new ValidationException("End date must be after start date");
         }
 
-        project.setName(name);
-        project.setDescription(description);
-        project.setStartDate(startDate);
-        project.setEndDate(endDate);
+        // Mettre à jour via le mapper
+        projectMapper.updateEntityFromDto(updateDto, project);
 
-        return projectRepository.save(project);
+        Project updatedProject = projectRepository.save(project);
+
+        log.info("Project updated: {}", id);
+        return projectMapper.toDto(updatedProject);
     }
 
     /**
@@ -116,6 +143,12 @@ public class ProjectService {
         log.info("Deleting project with id: {}", id);
 
         Project project = getProjectById(id);
+
+        // Vérification métier optionnelle
+        if (project.getSprints() != null && !project.getSprints().isEmpty()) {
+            log.warn("Deleting project {} with {} sprints", id, project.getSprints().size());
+        }
+
         projectRepository.delete(project);
 
         log.info("Project deleted: {}", id);
@@ -125,48 +158,79 @@ public class ProjectService {
      * Ajoute un membre au projet
      */
     @Transactional
-    public void addMemberToProject(Long projectId, Long userId) {
+    public ProjectDTO addMemberToProject(Long projectId, Long userId) {
         log.info("Adding user {} to project {}", userId, projectId);
 
         Project project = getProjectById(projectId);
-        User user= userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User",userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         if (project.getMembers().contains(user)) {
             throw new BusinessException("User is already a member of this project");
         }
 
         project.addMember(user);
-        projectRepository.save(project);
+        Project updatedProject = projectRepository.save(project);
+
+        log.info("User {} added to project {}", userId, projectId);
+        return projectMapper.toDto(updatedProject);
     }
 
     /**
      * Retire un membre du projet
      */
     @Transactional
-    public void removeMemberFromProject(Long projectId, Long userId) {
+    public ProjectDTO removeMemberFromProject(Long projectId, Long userId) {
         log.info("Removing user {} from project {}", userId, projectId);
 
         Project project = getProjectById(projectId);
-        User user=userRepository.findById(userId)
-                .orElseThrow(()->new ResourceNotFoundException("User",userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+
+        if (!project.getMembers().contains(user)) {
+            throw new BusinessException("User is not a member of this project");
+        }
+
         project.removeMember(user);
-        projectRepository.save(project);
+        Project updatedProject = projectRepository.save(project);
+
+        log.info("User {} removed from project {}", userId, projectId);
+        return projectMapper.toDto(updatedProject);
     }
 
     /**
      * Récupère les projets terminés
      */
-    public List<Project> getCompletedProjects() {
+    public List<ProjectDTO> getCompletedProjects() {
         log.debug("Fetching completed projects");
-        return projectRepository.findCompletedProjects(LocalDate.now());
+        List<Project> projects = projectRepository.findCompletedProjects(LocalDate.now());
+        return projectMapper.toDtoList(projects);
+    }
+
+    /**
+     * Récupère les projets actifs (non terminés)
+     */
+    public List<ProjectDTO> getActiveProjects() {
+        log.debug("Fetching active projects");
+        LocalDate now = LocalDate.now();
+        List<Project> projects = projectRepository.findAll().stream()
+                .filter(p -> p.getEndDate().isAfter(now) || p.getEndDate().isEqual(now))
+                .toList();
+        return projectMapper.toDtoList(projects);
     }
 
     /**
      * Récupère les projets d'un utilisateur
      */
-    public List<Project> getProjectsByUser(Long userId) {
+    public List<ProjectDTO> getProjectsByUser(Long userId) {
         log.debug("Fetching projects for user: {}", userId);
-        return projectRepository.findProjectsByMemberId(userId);
+
+        // Vérifier que l'utilisateur existe
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User", userId);
+        }
+
+        List<Project> projects = projectRepository.findProjectsByMemberId(userId);
+        return projectMapper.toDtoList(projects);
     }
 }

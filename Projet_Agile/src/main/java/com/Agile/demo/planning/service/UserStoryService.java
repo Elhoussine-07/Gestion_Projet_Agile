@@ -1,12 +1,12 @@
 package com.Agile.demo.planning.service;
 
-import com.Agile.demo.common.planningAspect.LogExecutionTime;
-import com.Agile.demo.common.exception.ResourceNotFoundException;
+import com.Agile.demo.aspect.performance.LogExecutionTime;
+import com.Agile.demo.exception.ResourceNotFoundException;
 import com.Agile.demo.model.AcceptanceCriteria;
 import com.Agile.demo.model.ProductBacklog;
 import com.Agile.demo.model.UserStory;
-import com.Agile.demo.model.UserStoryDescription;
-import com.Agile.demo.planning.repository.EpicRepository;
+import com.Agile.demo.planning.dto.userstory.*;
+import com.Agile.demo.planning.mapper.UserStoryMapper;
 import com.Agile.demo.planning.repository.ProductBacklogRepository;
 import com.Agile.demo.planning.repository.UserStoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -25,233 +24,221 @@ public class UserStoryService {
 
     private final UserStoryRepository userStoryRepository;
     private final ProductBacklogRepository productBacklogRepository;
-    private final EpicRepository epicRepository;
+    private final UserStoryMapper userStoryMapper;
 
     // ===== CREATE =====
 
     @Transactional
-    @LogExecutionTime(threshold = 500)  // Warning si > 500ms
-    public UserStory createUserStory(Long productBacklogId, String title,
-                                     String role, String action, String purpose,
-                                     Integer storyPoints) {
-        log.info("Creating user story: {}", title);
+    @LogExecutionTime(threshold = 500)
+    public UserStoryDTO createUserStory(CreateUserStoryDTO dto) {
+        log.info("Creating user story: {}", dto.getTitle());
 
-        ProductBacklog backlog = productBacklogRepository.findById(productBacklogId)
-                .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog", productBacklogId));
+        ProductBacklog backlog = productBacklogRepository.findById(dto.getProductBacklogId())
+                .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog", dto.getProductBacklogId()));
 
-        UserStory story = UserStory.builder()
-                .title(title)
-                .description(new UserStoryDescription(role, action, purpose))
-                .acceptanceCriteria(new AcceptanceCriteria())
-                .storyPoints(storyPoints)
-                .build();
-
+        UserStory story = userStoryMapper.toEntity(dto);
         story.setProductBacklog(backlog);
 
-        return userStoryRepository.save(story);
+        UserStory saved = userStoryRepository.save(story);
+        return userStoryMapper.toDto(saved);
     }
 
-    //  Créer avec critères d'acceptation
     @Transactional
-    public UserStory createUserStoryWithCriteria(Long productBacklogId, String title,
-                                                 String role, String action, String purpose,
-                                                 List<String> givenClauses,
-                                                 List<String> whenClauses,
-                                                 List<String> thenClauses,
-                                                 Integer storyPoints) {
-        log.info("Creating user story with acceptance criteria: {}", title);
+    public UserStoryDTO createUserStoryWithCriteria(CreateUserStoryWithCriteriaDTO dto) {
+        log.info("Creating user story with acceptance criteria: {}", dto.getTitle());
 
-        ProductBacklog backlog = productBacklogRepository.findById(productBacklogId)
-                .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog", productBacklogId));
+        ProductBacklog backlog = productBacklogRepository.findById(dto.getProductBacklogId())
+                .orElseThrow(() -> new ResourceNotFoundException("ProductBacklog", dto.getProductBacklogId()));
 
-        // Créer les critères
-
-
-        AcceptanceCriteria criteria = new AcceptanceCriteria();
-        givenClauses.forEach(criteria::addGiven);
-        whenClauses.forEach(criteria::addWhen);
-        thenClauses.forEach(criteria::addThen);
-
-        UserStory story = UserStory.builder()
-                .title(title)
-                .description(new UserStoryDescription(role, action, purpose))
-                .acceptanceCriteria(criteria)
-                .storyPoints(storyPoints)
-                .build();
-
+        UserStory story = userStoryMapper.toEntityWithCriteria(dto);
         story.setProductBacklog(backlog);
 
-        return userStoryRepository.save(story);
+        UserStory saved = userStoryRepository.save(story);
+        return userStoryMapper.toDto(saved);
     }
 
     // ===== READ =====
 
     @LogExecutionTime(threshold = 100)
-    public UserStory getUserStoryById(Long id) {
-        return userStoryRepository.findById(id)
+    public UserStoryDTO getUserStoryById(Long id) {
+        UserStory story = userStoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
+        return userStoryMapper.toDto(story);
     }
 
     @LogExecutionTime(threshold = 200)
-    public List<UserStory> getUserStoriesByProductBacklog(Long backlogId) {
-        return userStoryRepository.findByProductBacklogId(backlogId);
+    public List<UserStoryDTO> getUserStoriesByProductBacklog(Long backlogId) {
+        List<UserStory> stories = userStoryRepository.findByProductBacklogId(backlogId);
+        return userStoryMapper.toDtoList(stories);
     }
 
-    public List<UserStory> getUserStoriesByEpic(Long epicId) {
-        return userStoryRepository.findByEpicId(epicId);
+    public List<UserStoryDTO> getUserStoriesByEpic(Long epicId) {
+        List<UserStory> stories = userStoryRepository.findByEpicId(epicId);
+        return userStoryMapper.toDtoList(stories);
     }
 
-    public List<UserStory> getUnassignedStories(Long backlogId) {
-        return userStoryRepository.findByProductBacklogIdAndEpicIsNull(backlogId);
+    public List<UserStoryDTO> getUnassignedStories(Long backlogId) {
+        List<UserStory> stories = userStoryRepository.findByProductBacklogIdAndEpicIsNull(backlogId);
+        return userStoryMapper.toDtoList(stories);
     }
 
-    public List<UserStory> getStoriesOrderedByPriority(Long backlogId) {
-        return userStoryRepository.findByProductBacklogIdOrderedByPriority(backlogId);
+    public List<UserStoryDTO> getStoriesOrderedByPriority(Long backlogId) {
+        List<UserStory> stories = userStoryRepository.findByProductBacklogIdOrderedByPriority(backlogId);
+        return userStoryMapper.toDtoList(stories);
     }
 
-    //  Récupérer stories prêtes pour le sprint (Definition of Ready)
-    public List<UserStory> getReadyStories(Long backlogId) {
+    public List<UserStoryDTO> getReadyStories(Long backlogId) {
         log.debug("Fetching ready stories for backlog: {}", backlogId);
-        return userStoryRepository.findByProductBacklogId(backlogId).stream()
+        List<UserStory> stories = userStoryRepository.findByProductBacklogId(backlogId).stream()
                 .filter(UserStory::isValid)
                 .filter(story -> story.getStoryPoints() > 0)
                 .filter(story -> !story.isInSprint())
                 .toList();
+        return userStoryMapper.toDtoList(stories);
+    }
+
+    public List<UserStoryDTO> getAllUserStories() {
+        List<UserStory> stories = userStoryRepository.findAll();
+        return userStoryMapper.toDtoList(stories);
     }
 
     // ===== UPDATE =====
 
     @Transactional
     @LogExecutionTime(threshold = 300)
-    public UserStory updateUserStory(Long id, String title, String role,
-                                     String action, String purpose, Integer storyPoints) {
-        UserStory story = getUserStoryById(id);
+    public UserStoryDTO updateUserStory(Long id, UpdateUserStoryDTO dto) {
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
 
-        story.setTitle(title);
-        story.setDescription(new UserStoryDescription(role, action, purpose));
-        story.setStoryPoints(storyPoints);
+        userStoryMapper.updateEntityFromDto(dto, story);
 
-        return userStoryRepository.save(story);
+        UserStory updated = userStoryRepository.save(story);
+        return userStoryMapper.toDto(updated);
     }
 
-    //  Mettre à jour les critères d'acceptation
     @Transactional
-    public UserStory updateAcceptanceCriteria(Long id,
-                                              List<String> givenClauses,
-                                              List<String> whenClauses,
-                                              List<String> thenClauses) {
+    public UserStoryDTO updateAcceptanceCriteria(Long id, UpdateAcceptanceCriteriaDTO dto) {
         log.info("Updating acceptance criteria for story: {}", id);
 
-        UserStory story = getUserStoryById(id);
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
 
-        // Réinitialiser et remplir les critères
         AcceptanceCriteria criteria = new AcceptanceCriteria();
-        givenClauses.forEach(criteria::addGiven);
-        whenClauses.forEach(criteria::addWhen);
-        thenClauses.forEach(criteria::addThen);
+        if (dto.getGivenClauses() != null) {
+            dto.getGivenClauses().forEach(criteria::addGiven);
+        }
+        if (dto.getWhenClauses() != null) {
+            dto.getWhenClauses().forEach(criteria::addWhen);
+        }
+        if (dto.getThenClauses() != null) {
+            dto.getThenClauses().forEach(criteria::addThen);
+        }
 
         story.setAcceptanceCriteria(criteria);
 
-        return userStoryRepository.save(story);
+        UserStory updated = userStoryRepository.save(story);
+        return userStoryMapper.toDto(updated);
     }
 
-    //  Ajouter une clause Given
     @Transactional
-    public UserStory addGivenClause(Long id, String clause) {
-        UserStory story = getUserStoryById(id);
+    public UserStoryDTO addGivenClause(Long id, String clause) {
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
 
         if (story.getAcceptanceCriteria() == null) {
             story.setAcceptanceCriteria(new AcceptanceCriteria());
         }
 
         story.getAcceptanceCriteria().addGiven(clause);
-        return userStoryRepository.save(story);
+        UserStory updated = userStoryRepository.save(story);
+        return userStoryMapper.toDto(updated);
     }
 
-    //  Ajouter une clause When
     @Transactional
-    public UserStory addWhenClause(Long id, String clause) {
-        UserStory story = getUserStoryById(id);
+    public UserStoryDTO addWhenClause(Long id, String clause) {
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
 
         if (story.getAcceptanceCriteria() == null) {
             story.setAcceptanceCriteria(new AcceptanceCriteria());
         }
 
         story.getAcceptanceCriteria().addWhen(clause);
-        return userStoryRepository.save(story);
+        UserStory updated = userStoryRepository.save(story);
+        return userStoryMapper.toDto(updated);
     }
 
-    //  Ajouter une clause Then
     @Transactional
-    public UserStory addThenClause(Long id, String clause) {
-        UserStory story = getUserStoryById(id);
+    public UserStoryDTO addThenClause(Long id, String clause) {
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
 
         if (story.getAcceptanceCriteria() == null) {
             story.setAcceptanceCriteria(new AcceptanceCriteria());
         }
 
         story.getAcceptanceCriteria().addThen(clause);
-        return userStoryRepository.save(story);
+        UserStory updated = userStoryRepository.save(story);
+        return userStoryMapper.toDto(updated);
     }
 
     @Transactional
-    public void updatePriority(Long id, Integer priority) {
-        UserStory story = getUserStoryById(id);
-        story.setPriority(priority);
+    public void updatePriority(Long id, UpdatePriorityDTO dto) {
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
+        story.setPriority(dto.getPriority());
         userStoryRepository.save(story);
     }
 
-    //  Mettre à jour les métriques personnalisées
     @Transactional
-    public UserStory updateMetric(Long id, String metricName, Integer value) {
+    public UserStoryDTO updateMetric(Long id, String metricName, Integer value) {
         log.info("Updating metric {} for story {}: {}", metricName, id, value);
 
-        UserStory story = getUserStoryById(id);
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
         story.setMetric(metricName, value);
 
-        return userStoryRepository.save(story);
+        UserStory updated = userStoryRepository.save(story);
+        return userStoryMapper.toDto(updated);
     }
 
-    //  Batch update de métriques
     @Transactional
-    public UserStory updateMetrics(Long id, Map<String, Integer> metrics) {
-        log.info("Batch updating {} metrics for story {}", metrics.size(), id);
+    public UserStoryDTO updateMetrics(Long id, UpdateMetricsDTO dto) {
+        log.info("Batch updating {} metrics for story {}", dto.getMetrics().size(), id);
 
-        UserStory story = getUserStoryById(id);
-        metrics.forEach(story::setMetric);
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
+        dto.getMetrics().forEach(story::setMetric);
 
-        return userStoryRepository.save(story);
+        UserStory updated = userStoryRepository.save(story);
+        return userStoryMapper.toDto(updated);
     }
 
     // ===== DELETE =====
 
     @Transactional
     public void deleteUserStory(Long id) {
-        UserStory story = getUserStoryById(id);
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
         userStoryRepository.delete(story);
     }
 
     // ===== BUSINESS LOGIC =====
 
-    //   Vérifier si story est prête pour le sprint
     public boolean isReadyForSprint(Long id) {
-        UserStory story = getUserStoryById(id);
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
         return story.isValid()
                 && story.getStoryPoints() > 0
                 && story.getAcceptanceCriteria() != null
                 && story.getAcceptanceCriteria().isValid();
     }
 
-    //  Obtenir le format Gherkin
     public String getGherkinFormat(Long id) {
-        UserStory story = getUserStoryById(id);
+        UserStory story = userStoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("UserStory", id));
         return story.getAcceptanceCriteria() != null
                 ? story.getAcceptanceCriteria().toGherkinFormat()
                 : "No acceptance criteria defined";
-    }
-
-
-    public List<UserStory> getAllUserStories() {
-        return userStoryRepository.findAll();
     }
 }

@@ -1,5 +1,7 @@
-package com.Agile.demo.common.planningAspect;
+package com.Agile.demo.aspect;
 
+import com.Agile.demo.aspect.performance.LogExecutionTime;
+import com.Agile.demo.aspect.performance.PlanningPerformanceAspect;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 
@@ -11,7 +13,7 @@ class PerformanceAspectTest {
     @Test
     void shouldMeasureExecutionTime() throws Throwable {
         // Given
-        PerformanceAspect aspect = new PerformanceAspect();
+        PlanningPerformanceAspect aspect = new PlanningPerformanceAspect();
         TestService target = new TestService();
 
         AspectJProxyFactory factory = new AspectJProxyFactory(target);
@@ -27,7 +29,7 @@ class PerformanceAspectTest {
     @Test
     void shouldLogWarningWhenThresholdExceeded() throws Throwable {
         // Given
-        PerformanceAspect aspect = new PerformanceAspect();
+        PlanningPerformanceAspect aspect = new PlanningPerformanceAspect();
         TestService target = new TestService();
 
         AspectJProxyFactory factory = new AspectJProxyFactory(target);

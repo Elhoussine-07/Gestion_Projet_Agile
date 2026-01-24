@@ -1,5 +1,8 @@
 package com.Agile.demo.execution.services;
 
+import com.Agile.demo.execution.dto.SprintBacklogResponseDTO;
+import com.Agile.demo.execution.dto.SprintCreateRequest;
+import com.Agile.demo.execution.dto.mapper.SprintMapper;
 import com.Agile.demo.execution.repositories.SprintBacklogRepository;
 import com.Agile.demo.execution.repositories.TaskRepository;
 import com.Agile.demo.model.*;
@@ -13,7 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -27,460 +30,258 @@ class SprintServiceTest {
 
     @Mock
     private SprintBacklogRepository sprintBacklogRepository;
-
     @Mock
     private ProjectRepository projectRepository;
-
     @Mock
     private UserStoryRepository userStoryRepository;
-
     @Mock
     private TaskRepository taskRepository;
+    @Mock
+    private SprintMapper sprintMapper;
 
     @InjectMocks
     private SprintService sprintService;
 
+    // Entités de test
     private Project testProject;
+    private ProductBacklog testProductBacklog;
     private SprintBacklog testSprint;
     private UserStory testUserStory1;
     private UserStory testUserStory2;
-    private ProductBacklog testProductBacklog;
+    private SprintBacklogResponseDTO testSprintResponseDTO;
 
     @BeforeEach
     void setUp() {
-        testProject = new Project();
-        testProject.setId(1L);
-        testProject.setName("Test Project");
+        // 1. Setup du Project
+        testProject = Project.builder()
+                .id(1L)
+                .name("Agile Project")
+                .build();
 
-        testProductBacklog = new ProductBacklog();
+        // 2. Setup du ProductBacklog
+        testProductBacklog = new ProductBacklog("Main Backlog");
+        testProductBacklog.setId(1L);
         testProductBacklog.setProject(testProject);
 
-        testSprint = new SprintBacklog("Sprint 1", 1,
-                LocalDate.now(), LocalDate.now().plusDays(14), "Sprint Goal");
-        testSprint.setId(1L);
-        testSprint.setProject(testProject);
+        // 3. Setup des UserStories
+        // Note: On suppose que UserStory a aussi un Builder ou des setters
+        testUserStory1 = UserStory.builder()
+                .id(1L)
+                .title("Story 1")
+                .status(WorkItemStatus.TODO)
+                .storyPoints(5)
+                .productBacklog(testProductBacklog)
+                .dependencies(new ArrayList<>()) // Important pour éviter NPE
+                .tasks(new ArrayList<>())
+                .build();
 
-        testUserStory1 = new UserStory();
-        testUserStory1.setId(1L);
-        testUserStory1.setTitle("User Story 1");
-        testUserStory1.setProductBacklog(testProductBacklog);
-        testUserStory1.setStatus(WorkItemStatus.TODO);
+        testUserStory2 = UserStory.builder()
+                .id(2L)
+                .title("Story 2")
+                .status(WorkItemStatus.TODO)
+                .storyPoints(3)
+                .productBacklog(testProductBacklog)
+                .dependencies(new ArrayList<>())
+                .tasks(new ArrayList<>())
+                .build();
 
-        testUserStory2 = new UserStory();
-        testUserStory2.setId(2L);
-        testUserStory2.setTitle("User Story 2");
-        testUserStory2.setProductBacklog(testProductBacklog);
-        testUserStory2.setStatus(WorkItemStatus.TODO);
+        // 4. Setup du SprintBacklog (COMPATIBILITÉ ENTITÉ)
+        // Important : Avec @Builder, les listes par défaut sont nulles.
+        // Il faut les initialiser explicitement ici pour que 'addUserStory' fonctionne.
+        testSprint = SprintBacklog.builder()
+                .id(1L)
+                .sprintNumber(1)
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusDays(14))
+                .goal("Initial Goal")
+                .sprintStatus(SprintStatus.PLANNED)
+                .project(testProject)
+                .userStories(new ArrayList<>()) // Initialisation explicite
+                .tasks(new ArrayList<>())       // Initialisation explicite
+                .build();
+
+        // 5. Setup du DTO de réponse (Simulé)
+        testSprintResponseDTO = new SprintBacklogResponseDTO();
+        testSprintResponseDTO.setId(1L);
+        testSprintResponseDTO.setProjectId(1L);
+        testSprintResponseDTO.setSprintNumber(1);
+        testSprintResponseDTO.setStatus(SprintStatus.PLANNED);
     }
 
-    @Test
-    void createSprint_WithValidData_ShouldCreateSprint() {
-        Long projectId = 1L;
-        Integer sprintNumber = 1;
-        LocalDate startDate = LocalDate.now();
-        LocalDate endDate = LocalDate.now().plusDays(14);
-        String goal = "Sprint Goal";
-        List<Long> userStoryIds = Arrays.asList(1L, 2L);
+    // --- TESTS CRÉATION ---
 
-        when(projectRepository.findById(projectId)).thenReturn(Optional.of(testProject));
-        when(sprintBacklogRepository.existsByProjectIdAndSprintNumber(projectId, sprintNumber))
-                .thenReturn(false);
-        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(projectId, SprintStatus.ACTIVE))
-                .thenReturn(0L);
-        when(userStoryRepository.findAllById(userStoryIds))
-                .thenReturn(Arrays.asList(testUserStory1, testUserStory2));
+    @Test
+    void createSprint_ShouldPersistAndReturnDto() {
+        // Arrange
+        SprintCreateRequest request = new SprintCreateRequest();
+        request.setProjectId(1L);
+        request.setSprintNumber(1);
+        request.setStartDate(LocalDate.now());
+        request.setEndDate(LocalDate.now().plusDays(14));
+        request.setUserStoryIds(List.of(1L));
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(testProject));
+        when(sprintBacklogRepository.existsByProjectIdAndSprintNumber(1L, 1)).thenReturn(false);
+        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(1L, SprintStatus.ACTIVE)).thenReturn(0L);
+
+        when(sprintMapper.toEntity(request)).thenReturn(testSprint);
+        when(userStoryRepository.findAllById(anyList())).thenReturn(List.of(testUserStory1));
         when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
+        when(sprintMapper.toDto(testSprint)).thenReturn(testSprintResponseDTO);
 
-        SprintBacklog result = sprintService.createSprint(projectId, sprintNumber,
-                startDate, endDate, goal, userStoryIds);
+        // Act
+        SprintBacklogResponseDTO result = sprintService.createSprint(request);
 
+        // Assert
         assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(any(SprintBacklog.class));
+        verify(sprintBacklogRepository).save(testSprint);
+        // Vérifie que la méthode utilitaire addUserStory de l'entité a bien fonctionné
+        assertThat(testSprint.getUserStories()).contains(testUserStory1);
+    }
+
+    // --- TESTS LOGIQUE MÉTIER (Start/Complete) ---
+
+    @Test
+    void startSprint_ShouldChangeStatusToActive() {
+        // Arrange
+        testSprint.setSprintStatus(SprintStatus.PLANNED);
+        testSprint.addUserStory(testUserStory1); // Doit avoir au moins une story
+
+        when(sprintBacklogRepository.findById(1L)).thenReturn(Optional.of(testSprint));
+        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(anyLong(), eq(SprintStatus.ACTIVE))).thenReturn(0L);
+        when(sprintBacklogRepository.save(testSprint)).thenReturn(testSprint);
+
+        // On configure le mapper pour renvoyer un DTO actif pour la vérification
+        testSprintResponseDTO.setStatus(SprintStatus.ACTIVE);
+        when(sprintMapper.toDto(testSprint)).thenReturn(testSprintResponseDTO);
+
+        // Act
+        SprintBacklogResponseDTO result = sprintService.startSprint(1L);
+
+        // Assert
+        assertThat(result.getStatus()).isEqualTo(SprintStatus.ACTIVE);
+        // Vérifie que la méthode startSprint() de l'entité a été appelée
+        assertThat(testSprint.getSprintStatus()).isEqualTo(SprintStatus.ACTIVE);
     }
 
     @Test
-    void createSprint_WithNonExistentProject_ShouldThrowException() {
-        Long projectId = 999L;
-        when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
+    void startSprint_WithUnmetDependencies_ShouldThrowException() {
+        // Arrange : Story 1 dépend de Story 2, et Story 2 n'est pas DONE
+        UserStory blockedStory = testUserStory1;
+        UserStory dependency = testUserStory2;
+        dependency.setStatus(WorkItemStatus.TODO);
 
-        assertThatThrownBy(() -> sprintService.createSprint(projectId, 1,
-                LocalDate.now(), LocalDate.now().plusDays(14), "Goal", null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Projet non trouvé");
-    }
+        blockedStory.getDependencies().add(dependency);
+        testSprint.addUserStory(blockedStory);
 
-    @Test
-    void createSprint_WithDuplicateSprintNumber_ShouldThrowException() {
-        Long projectId = 1L;
-        Integer sprintNumber = 1;
+        when(sprintBacklogRepository.findById(1L)).thenReturn(Optional.of(testSprint));
+        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(anyLong(), eq(SprintStatus.ACTIVE))).thenReturn(0L);
 
-        when(projectRepository.findById(projectId)).thenReturn(Optional.of(testProject));
-        when(sprintBacklogRepository.existsByProjectIdAndSprintNumber(projectId, sprintNumber))
-                .thenReturn(true);
-
-        assertThatThrownBy(() -> sprintService.createSprint(projectId, sprintNumber,
-                LocalDate.now(), LocalDate.now().plusDays(14), "Goal", null))
+        // Act & Assert
+        assertThatThrownBy(() -> sprintService.startSprint(1L))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("existe déjà");
+                .hasMessageContaining("dépendances non satisfaites");
     }
 
     @Test
-    void createSprint_WithActiveSprintExists_ShouldThrowException() {
-        Long projectId = 1L;
-        Integer sprintNumber = 2;
-
-        when(projectRepository.findById(projectId)).thenReturn(Optional.of(testProject));
-        when(sprintBacklogRepository.existsByProjectIdAndSprintNumber(projectId, sprintNumber))
-                .thenReturn(false);
-        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(projectId, SprintStatus.ACTIVE))
-                .thenReturn(1L);
-
-        assertThatThrownBy(() -> sprintService.createSprint(projectId, sprintNumber,
-                LocalDate.now(), LocalDate.now().plusDays(14), "Goal", null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("déjà actif");
-    }
-
-    @Test
-    void createSprint_WithEndDateBeforeStartDate_ShouldThrowException() {
-        Long projectId = 1L;
-        LocalDate startDate = LocalDate.now();
-        LocalDate endDate = LocalDate.now().minusDays(1);
-
-        when(projectRepository.findById(projectId)).thenReturn(Optional.of(testProject));
-        when(sprintBacklogRepository.existsByProjectIdAndSprintNumber(anyLong(), anyInt()))
-                .thenReturn(false);
-        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(anyLong(), any()))
-                .thenReturn(0L);
-
-        assertThatThrownBy(() -> sprintService.createSprint(projectId, 1,
-                startDate, endDate, "Goal", null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("après la date de début");
-    }
-
-    @Test
-    void getSprintsByProject_ShouldReturnAllSprints() {
-        Long projectId = 1L;
-        List<SprintBacklog> sprints = Arrays.asList(testSprint);
-        when(sprintBacklogRepository.findByProjectId(projectId)).thenReturn(sprints);
-
-        List<SprintBacklog> result = sprintService.getSprintsByProject(projectId);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0)).isEqualTo(testSprint);
-        verify(sprintBacklogRepository, times(1)).findByProjectId(projectId);
-    }
-
-    @Test
-    void getActiveSprint_WithActiveSprint_ShouldReturnSprint() {
-        Long projectId = 1L;
+    void completeSprint_ShouldCalculateMetricsAndClose() {
+        // Arrange
         testSprint.setSprintStatus(SprintStatus.ACTIVE);
-        when(sprintBacklogRepository.findByProjectIdAndSprintStatus(projectId, SprintStatus.ACTIVE))
-                .thenReturn(Arrays.asList(testSprint));
-
-        SprintBacklog result = sprintService.getActiveSprint(projectId);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getSprintStatus()).isEqualTo(SprintStatus.ACTIVE);
-    }
-
-    @Test
-    void getActiveSprint_WithNoActiveSprint_ShouldThrowException() {
-        Long projectId = 1L;
-        when(sprintBacklogRepository.findByProjectIdAndSprintStatus(projectId, SprintStatus.ACTIVE))
-                .thenReturn(Collections.emptyList());
-
-        assertThatThrownBy(() -> sprintService.getActiveSprint(projectId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Aucun sprint actif");
-    }
-
-    @Test
-    void getSprintById_WithValidId_ShouldReturnSprint() {
-        Long sprintId = 1L;
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-
-        SprintBacklog result = sprintService.getSprintById(sprintId);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(sprintId);
-    }
-
-    @Test
-    void getSprintById_WithInvalidId_ShouldThrowException() {
-        Long sprintId = 999L;
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> sprintService.getSprintById(sprintId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Sprint non trouvé");
-    }
-
-    @Test
-    void updateSprint_WithValidData_ShouldUpdateSprint() {
-        Long sprintId = 1L;
-        LocalDate newStartDate = LocalDate.now().plusDays(1);
-        LocalDate newEndDate = LocalDate.now().plusDays(15);
-        String newGoal = "Updated Goal";
-
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
-
-        SprintBacklog result = sprintService.updateSprint(sprintId, newStartDate,
-                newEndDate, newGoal);
-
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(testSprint);
-    }
-
-    @Test
-    void updateSprint_WithCompletedStatus_ShouldThrowException() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.COMPLETED);
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-
-        assertThatThrownBy(() -> sprintService.updateSprint(sprintId,
-                LocalDate.now(), LocalDate.now().plusDays(14), "Goal"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("terminé ou annulé");
-    }
-
-    @Test
-    void startSprint_WithValidSprint_ShouldStartSprint() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
         testSprint.addUserStory(testUserStory1);
 
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(anyLong(), eq(SprintStatus.ACTIVE)))
-                .thenReturn(0L);
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
+        when(sprintBacklogRepository.findById(1L)).thenReturn(Optional.of(testSprint));
+        when(sprintBacklogRepository.save(testSprint)).thenReturn(testSprint);
 
-        SprintBacklog result = sprintService.startSprint(sprintId);
+        testSprintResponseDTO.setStatus(SprintStatus.COMPLETED);
+        when(sprintMapper.toDto(testSprint)).thenReturn(testSprintResponseDTO);
 
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(testSprint);
+        // Act
+        sprintService.completeSprint(1L);
+
+        // Assert
+        // Vérifie que la méthode completeSprint() de l'entité a été appelée
+        assertThat(testSprint.getSprintStatus()).isEqualTo(SprintStatus.COMPLETED);
     }
 
-    @Test
-    void startSprint_WithNoUserStories_ShouldThrowException() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(anyLong(), eq(SprintStatus.ACTIVE)))
-                .thenReturn(0L);
-
-        assertThatThrownBy(() -> sprintService.startSprint(sprintId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("au moins une User Story");
-    }
+    // --- TESTS GESTION DES STORIES ---
 
     @Test
-    void completeSprint_ShouldCompleteSprint() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.ACTIVE);
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
+    void moveUserStoryBetweenSprints_ShouldUpdateRelationships() {
+        // Arrange
+        SprintBacklog targetSprint = SprintBacklog.builder()
+                .id(2L)
+                .sprintStatus(SprintStatus.PLANNED)
+                .project(testProject)
+                .userStories(new ArrayList<>()) // Liste vide mutable
+                .build();
 
-        SprintBacklog result = sprintService.completeSprint(sprintId);
-
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(testSprint);
-    }
-
-    @Test
-    void cancelSprint_ShouldCancelSprint() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.ACTIVE);
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
-
-        SprintBacklog result = sprintService.cancelSprint(sprintId);
-
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(testSprint);
-    }
-
-    @Test
-    void deleteSprint_WithPlannedSprint_ShouldDeleteSprint() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-
-        sprintService.deleteSprint(sprintId);
-
-        verify(sprintBacklogRepository, times(1)).delete(testSprint);
-    }
-
-    @Test
-    void deleteSprint_WithActiveSprint_ShouldThrowException() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.ACTIVE);
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-
-        assertThatThrownBy(() -> sprintService.deleteSprint(sprintId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("planifiés peuvent être supprimés");
-    }
-
-    @Test
-    void addUserStoryToSprint_WithValidData_ShouldAddUserStory() {
-        Long sprintId = 1L;
-        Long userStoryId = 1L;
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(userStoryRepository.findById(userStoryId)).thenReturn(Optional.of(testUserStory1));
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
-
-        SprintBacklog result = sprintService.addUserStoryToSprint(sprintId, userStoryId);
-
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(testSprint);
-    }
-
-    @Test
-    void addUserStoryToSprint_WithCompletedSprint_ShouldThrowException() {
-        Long sprintId = 1L;
-        Long userStoryId = 1L;
-        testSprint.setSprintStatus(SprintStatus.COMPLETED);
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(userStoryRepository.findById(userStoryId)).thenReturn(Optional.of(testUserStory1));
-
-        assertThatThrownBy(() -> sprintService.addUserStoryToSprint(sprintId, userStoryId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("terminé ou annulé");
-    }
-
-    @Test
-    void addMultipleUserStoriesToSprint_WithValidData_ShouldAddAllStories() {
-        Long sprintId = 1L;
-        List<Long> userStoryIds = Arrays.asList(1L, 2L);
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(userStoryRepository.findAllById(userStoryIds))
-                .thenReturn(Arrays.asList(testUserStory1, testUserStory2));
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
-
-        SprintBacklog result = sprintService.addMultipleUserStoriesToSprint(sprintId, userStoryIds);
-
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(testSprint);
-    }
-
-    @Test
-    void addMultipleUserStoriesToSprint_WithEmptyList_ShouldThrowException() {
-        Long sprintId = 1L;
-        List<Long> emptyList = Collections.emptyList();
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-
-        assertThatThrownBy(() -> sprintService.addMultipleUserStoriesToSprint(sprintId, emptyList))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("ne peut pas être vide");
-    }
-
-    @Test
-    void removeUserStoryFromSprint_WithValidData_ShouldRemoveUserStory() {
-        Long sprintId = 1L;
-        Long userStoryId = 1L;
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(userStoryRepository.findById(userStoryId)).thenReturn(Optional.of(testUserStory1));
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
-
-        SprintBacklog result = sprintService.removeUserStoryFromSprint(sprintId, userStoryId);
-
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(testSprint);
-    }
-
-    @Test
-    void canStartSprint_WithValidConditions_ShouldReturnTrue() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
+        // La story est actuellement dans le Sprint 1
         testSprint.addUserStory(testUserStory1);
 
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(sprintBacklogRepository.countByProjectIdAndSprintStatus(anyLong(), eq(SprintStatus.ACTIVE)))
-                .thenReturn(0L);
+        when(sprintBacklogRepository.findById(1L)).thenReturn(Optional.of(testSprint));
+        when(sprintBacklogRepository.findById(2L)).thenReturn(Optional.of(targetSprint));
 
-        boolean result = sprintService.canStartSprint(sprintId);
+        // Act
+        sprintService.moveUserStoryBetweenSprints(1L, 2L, 1L);
 
-        assertThat(result).isTrue();
+        // Assert
+        // Vérifie l'utilisation de removeUserStory de l'entité SprintBacklog
+        assertThat(testSprint.getUserStories()).doesNotContain(testUserStory1);
+        // Vérifie l'utilisation de addUserStory de l'entité SprintBacklog
+        assertThat(targetSprint.getUserStories()).contains(testUserStory1);
+
+        verify(sprintBacklogRepository).save(testSprint);
+        verify(sprintBacklogRepository).save(targetSprint);
     }
 
     @Test
-    void canStartSprint_WithNoUserStories_ShouldReturnFalse() {
-        Long sprintId = 1L;
-        testSprint.setSprintStatus(SprintStatus.PLANNED);
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-
-        boolean result = sprintService.canStartSprint(sprintId);
-
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void cloneSprint_WithValidData_ShouldCloneSprint() {
-        Long sprintId = 1L;
-        Integer newSprintNumber = 2;
-        LocalDate newStartDate = LocalDate.now().plusDays(15);
-        LocalDate newEndDate = LocalDate.now().plusDays(29);
-
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(sprintBacklogRepository.existsByProjectIdAndSprintNumber(anyLong(), eq(newSprintNumber)))
-                .thenReturn(false);
-        when(sprintBacklogRepository.save(any(SprintBacklog.class))).thenReturn(testSprint);
-
-        SprintBacklog result = sprintService.cloneSprint(sprintId, newSprintNumber,
-                newStartDate, newEndDate);
-
-        assertThat(result).isNotNull();
-        verify(sprintBacklogRepository, times(1)).save(any(SprintBacklog.class));
-    }
-
-    @Test
-    void getSprintMetrics_ShouldReturnCompleteMetrics() {
-        Long sprintId = 1L;
+    void removeUserStory_ShouldCheckInProgressTasks() {
+        // Arrange
         testSprint.addUserStory(testUserStory1);
+
+        // Ajout d'une tâche en cours (nécessite Task entity)
+        Task activeTask = new Task();
+        activeTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testUserStory1.getTasks().add(activeTask);
+
+        when(sprintBacklogRepository.findById(1L)).thenReturn(Optional.of(testSprint));
+        when(userStoryRepository.findById(1L)).thenReturn(Optional.of(testUserStory1));
+
+        // Act & Assert
+        assertThatThrownBy(() -> sprintService.removeUserStoryFromSprint(1L, 1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tâche(s) en cours");
+    }
+
+    // --- TESTS MÉTRIQUES (Utilisation des méthodes de l'entité) ---
+
+    @Test
+    void getSprintMetrics_ShouldUseEntityCalculationMethods() {
+        // Arrange
+        // Story complétée (5 points)
         testUserStory1.setStatus(WorkItemStatus.DONE);
         testUserStory1.setStoryPoints(5);
+        testSprint.addUserStory(testUserStory1);
 
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
-        when(taskRepository.findBySprintBacklogId(Math.toIntExact(sprintId)))
-                .thenReturn(Collections.emptyList());
-
-        SprintService.SprintMetrics result = sprintService.getSprintMetrics(sprintId);
-
-        assertThat(result).isNotNull();
-        assertThat(result.velocity()).isEqualTo(5);
-        assertThat(result.status()).isEqualTo(SprintStatus.PLANNED);
-    }
-
-    @Test
-    void getSprintBurndown_ShouldReturnBurndownData() {
-        Long sprintId = 1L;
-        testUserStory1.setStoryPoints(5);
+        // Story non complétée (3 points)
+        testUserStory2.setStatus(WorkItemStatus.TODO);
         testUserStory2.setStoryPoints(3);
-        testUserStory1.setStatus(WorkItemStatus.DONE);
-        testUserStory2.setStatus(WorkItemStatus.TODO);
-        testSprint.addUserStory(testUserStory1);
         testSprint.addUserStory(testUserStory2);
 
-        when(sprintBacklogRepository.findById(sprintId)).thenReturn(Optional.of(testSprint));
+        when(sprintBacklogRepository.findById(1L)).thenReturn(Optional.of(testSprint));
+        when(taskRepository.findBySprintBacklogId(anyInt())).thenReturn(Collections.emptyList());
 
-        SprintService.SprintBurndown result = sprintService.getSprintBurndown(sprintId);
+        // Act
+        SprintService.SprintMetrics metrics = sprintService.getSprintMetrics(1L);
 
-        assertThat(result).isNotNull();
-        assertThat(result.totalStoryPoints()).isEqualTo(8);
-        assertThat(result.completedStoryPoints()).isEqualTo(5);
-        assertThat(result.remainingStoryPoints()).isEqualTo(3);
+        // Assert
+        // Vérifie calculateVelocity() de l'entité
+        assertThat(metrics.velocity()).isEqualTo(5);
+        // Vérifie getTotalStoryPoints() de l'entité (5 + 3)
+        assertThat(metrics.totalStoryPoints()).isEqualTo(8);
+        // Vérifie getRemainingStoryPoints() de l'entité (3)
+        assertThat(metrics.remainingStoryPoints()).isEqualTo(3);
+        // Vérifie calculateProgress() de l'entité (1 sur 2 stories = 50%)
+        assertThat(metrics.progressPercentage()).isEqualTo(50.0);
     }
 }

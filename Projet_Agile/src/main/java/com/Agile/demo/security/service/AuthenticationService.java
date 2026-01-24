@@ -1,6 +1,7 @@
 package com.Agile.demo.security.service;
 
-import com.Agile.demo.common.exception.BusinessException;
+import com.Agile.demo.exception.BusinessException;
+import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
 import com.Agile.demo.execution.repositories.UserRepository;
 import com.Agile.demo.security.dto.AuthResponse;
@@ -17,9 +18,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Service d'authentification et d'inscription
- */
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -30,9 +32,6 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-    /**
-     * Authentifie un utilisateur et génère un token JWT
-     */
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         log.info("Attempting login for user: {}", request.getUsername());
@@ -50,11 +49,12 @@ public class AuthenticationService {
         // Générer token
         String jwt = jwtTokenProvider.generateToken(authentication);
 
-        // Récupérer l'utilisateur
-        User user = userRepository.findByUsername(request.getUsername())
+        //  CHANGEMENT : Utiliser findByUsernameWithRoles
+        User user = userRepository.findByUsernameWithRoles(request.getUsername())
                 .orElseThrow(() -> new BusinessException("User not found"));
 
-        log.info("User {} logged in successfully", request.getUsername());
+        log.info("User {} logged in successfully with roles: {}",
+                request.getUsername(), user.getRoles());
 
         return AuthResponse.builder()
                 .token(jwt)
@@ -62,13 +62,12 @@ public class AuthenticationService {
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .role(user.getRole().name())
+                .roles(user.getRoles().stream()
+                        .map(Enum::name)
+                        .collect(Collectors.toSet()))
                 .build();
     }
 
-    /**
-     * Inscrit un nouvel utilisateur
-     */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         log.info("Attempting registration for user: {}", request.getUsername());
@@ -82,41 +81,57 @@ public class AuthenticationService {
             throw new BusinessException("Email already in use");
         }
 
-        // Créer l'utilisateur
+        // Gérer les rôles
+        Set<Role> roles = new HashSet<>();
+
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            roles.addAll(request.getRoles());
+            log.info("Roles provided: {}", roles);
+        } else {
+            // Rôle par défaut si aucun n'est fourni
+            roles.add(Role.DEVELOPER);
+            log.info("No roles provided, using default role: DEVELOPER");
+        }
+
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .role(request.getRole() != null ? request.getRole() : com.Agile.demo.model.Role.DEVELOPER)
+                .roles(roles)
+                .isActive(true)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        //  VÉRIFICATION : Recharger l'utilisateur avec les rôles
+        User userWithRoles = userRepository.findByIdWithRoles(savedUser.getId())
+                .orElseThrow(() -> new BusinessException("Failed to load saved user"));
+
+        log.info("User {} registered and saved with {} role(s): {}",
+                userWithRoles.getUsername(), userWithRoles.getRoles().size(), userWithRoles.getRoles());
 
         // Générer token
-        String jwt = jwtTokenProvider.generateTokenFromUsername(user.getUsername());
-
-        log.info("User {} registered successfully", request.getUsername());
+        String jwt = jwtTokenProvider.generateTokenFromUsername(userWithRoles.getUsername());
 
         return AuthResponse.builder()
-                .token(jwt)
-                .type("Bearer")
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .role(user.getRole().name())
+                .id(userWithRoles.getId())
+                .username(userWithRoles.getUsername())
+                .email(userWithRoles.getEmail())
+                .roles(userWithRoles.getRoles().stream()
+                        .map(Enum::name)
+                        .collect(Collectors.toSet()))
                 .build();
     }
 
-    /**
-     * Récupère l'utilisateur actuellement authentifié
-     */
     @Transactional(readOnly = true)
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-        return userRepository.findByUsername(username)
+
+        //  CHANGEMENT : Utiliser findByUsernameWithRoles
+        return userRepository.findByUsernameWithRoles(username)
                 .orElseThrow(() -> new BusinessException("Current user not found"));
     }
 }

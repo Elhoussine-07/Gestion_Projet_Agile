@@ -1,8 +1,12 @@
 package com.Agile.demo.planning.service;
 
-import com.Agile.demo.common.exception.ResourceNotFoundException;
-import com.Agile.demo.common.exception.ValidationException;
+import com.Agile.demo.exception.ResourceNotFoundException;
+import com.Agile.demo.exception.ValidationException;
 import com.Agile.demo.model.*;
+import com.Agile.demo.planning.dto.productbacklog.ProductBacklogDTO;
+import com.Agile.demo.planning.dto.productbacklog.UpdateProductBacklogDTO;
+import com.Agile.demo.planning.mapper.ProductBacklogMapper;
+import com.Agile.demo.planning.prioritization.IPrioritizationStrategy;
 import com.Agile.demo.planning.prioritization.PrioritizationStrategyProvider;
 import com.Agile.demo.planning.repository.ProductBacklogRepository;
 import com.Agile.demo.execution.repositories.SprintBacklogRepository;
@@ -42,10 +46,14 @@ class ProductBacklogServiceTest {
     @Mock
     private IPrioritizationStrategy prioritizationStrategy;
 
+    @Mock
+    private ProductBacklogMapper productBacklogMapper;
+
     @InjectMocks
     private ProductBacklogService productBacklogService;
 
     private ProductBacklog backlog;
+    private ProductBacklogDTO backlogDTO;
     private UserStory story1;
     private UserStory story2;
     private SprintBacklog sprint;
@@ -57,8 +65,12 @@ class ProductBacklogServiceTest {
         backlog.setId(1L);
         backlog.setTotalBusinessValue(0);
 
-        // Description valide avec méthodes isEmpty() et isComplete()
-        validDescription = new UserStoryDescription("User","login","access the system");
+        backlogDTO = ProductBacklogDTO.builder()
+                .id(1L)
+                .totalBusinessValue(0)
+                .build();
+
+        validDescription = new UserStoryDescription("User", "login", "access the system");
 
         story1 = new UserStory();
         story1.setId(101L);
@@ -82,7 +94,7 @@ class ProductBacklogServiceTest {
         sprint.setSprintStatus(SprintStatus.ACTIVE);
     }
 
-    // ========== Tests existants ==========
+    // ========== Tests avec DTOs ==========
 
     @Test
     void getProductBacklogById_shouldReturnBacklog() {
@@ -92,6 +104,17 @@ class ProductBacklogServiceTest {
 
         assertThat(result).isEqualTo(backlog);
         verify(productBacklogRepository).findById(1L);
+    }
+
+    @Test
+    void getProductBacklogDtoById_shouldReturnDto() {
+        when(productBacklogRepository.findById(1L)).thenReturn(Optional.of(backlog));
+        when(productBacklogMapper.toDto(backlog)).thenReturn(backlogDTO);
+
+        ProductBacklogDTO result = productBacklogService.getProductBacklogDtoById(1L);
+
+        assertThat(result).isEqualTo(backlogDTO);
+        verify(productBacklogMapper).toDto(backlog);
     }
 
     @Test
@@ -112,10 +135,41 @@ class ProductBacklogServiceTest {
     }
 
     @Test
+    void getProductBacklogDtoByProject_shouldReturnDto() {
+        when(productBacklogRepository.findByProjectId(10L)).thenReturn(Optional.of(backlog));
+        when(productBacklogMapper.toDto(backlog)).thenReturn(backlogDTO);
+
+        ProductBacklogDTO result = productBacklogService.getProductBacklogDtoByProject(10L);
+
+        assertThat(result).isEqualTo(backlogDTO);
+        verify(productBacklogMapper).toDto(backlog);
+    }
+
+    @Test
     void getProductBacklogByProject_shouldThrowException_whenNotFound() {
         when(productBacklogRepository.findByProjectId(10L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> productBacklogService.getProductBacklogByProject(10L));
+    }
+
+    @Test
+    void updateProductBacklog_shouldUpdateAndReturnDto() {
+        UpdateProductBacklogDTO updateDto = new UpdateProductBacklogDTO();
+        ProductBacklogDTO updatedDto = ProductBacklogDTO.builder()
+                .id(1L)
+                .totalBusinessValue(100)
+                .build();
+
+        when(productBacklogRepository.findById(1L)).thenReturn(Optional.of(backlog));
+        doNothing().when(productBacklogMapper).updateEntityFromDto(updateDto, backlog);
+        when(productBacklogRepository.save(backlog)).thenReturn(backlog);
+        when(productBacklogMapper.toDto(backlog)).thenReturn(updatedDto);
+
+        ProductBacklogDTO result = productBacklogService.updateProductBacklog(1L, updateDto);
+
+        assertThat(result).isEqualTo(updatedDto);
+        verify(productBacklogMapper).updateEntityFromDto(updateDto, backlog);
+        verify(productBacklogRepository).save(backlog);
     }
 
     @Test
@@ -153,7 +207,6 @@ class ProductBacklogServiceTest {
 
     @Test
     void applyPrioritization_shouldPrioritizeStories_whenValid() {
-        // Given
         List<UserStory> stories = Arrays.asList(story1, story2);
         List<UserStory> prioritizedStories = Arrays.asList(story2, story1);
 
@@ -175,10 +228,8 @@ class ProductBacklogServiceTest {
         when(productBacklogRepository.save(any(ProductBacklog.class)))
                 .thenReturn(backlog);
 
-        // When
         productBacklogService.applyPrioritization(1L, PrioritizationMethod.WSJF);
 
-        // Then
         verify(prioritizationStrategyProvider)
                 .getStrategy(PrioritizationMethod.WSJF);
 
@@ -207,7 +258,6 @@ class ProductBacklogServiceTest {
 
         productBacklogService.applyPrioritization(1L, PrioritizationMethod.VALUE_EFFORT);
 
-        //verify(prioritizationStrategyFactory, never()).getStrategy(any());
         verify(userStoryRepository, never()).saveAll(anyList());
     }
 
@@ -215,7 +265,7 @@ class ProductBacklogServiceTest {
     void applyPrioritization_shouldThrowException_whenStoryInvalid() {
         UserStory invalidStory = new UserStory();
         invalidStory.setId(103L);
-        invalidStory.setDescription(null); // Invalid
+        invalidStory.setDescription(null);
         invalidStory.setStoryPoints(5);
 
         when(productBacklogRepository.findById(1L)).thenReturn(Optional.of(backlog));
@@ -273,7 +323,6 @@ class ProductBacklogServiceTest {
         story1.setStatus(WorkItemStatus.DONE);
 
         when(userStoryRepository.findById(101L)).thenReturn(Optional.of(story1));
-        //when(sprintRepository.findById(1L)).thenReturn(Optional.of(sprint));
 
         assertThrows(ValidationException.class,
                 () -> productBacklogService.moveStoryToSprint(101L, 1L));

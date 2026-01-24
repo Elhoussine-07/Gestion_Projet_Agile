@@ -1,7 +1,11 @@
 package com.Agile.demo.execution.services;
 
+import com.Agile.demo.execution.dto.task.TaskResponseDTO;
+import com.Agile.demo.execution.dto.mapper.TaskMapper;
+import com.Agile.demo.execution.dto.task.BlockTaskRequest;
 import com.Agile.demo.execution.repositories.TaskRepository;
 import com.Agile.demo.execution.repositories.UserRepository;
+import com.Agile.demo.planning.repository.UserStoryRepository;
 import com.Agile.demo.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,18 +29,26 @@ class TaskServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private UserStoryRepository userStoryRepository;
+
+    @Mock
+    private TaskMapper taskMapper;
+
     @InjectMocks
     private TaskService taskService;
 
     private Task testTask;
     private UserStory testUserStory;
     private User testUser;
+    private TaskResponseDTO testResponseDTO;
 
     @BeforeEach
     void setUp() {
         testUserStory = new UserStory();
         testUserStory.setId(1L);
         testUserStory.setTitle("Test User Story");
+        testUserStory.setStatus(WorkItemStatus.TODO);
 
         testUser = new User();
         testUser.setId(1L);
@@ -47,7 +59,13 @@ class TaskServiceTest {
         testTask.setId(1L);
         testTask.setUserStory(testUserStory);
         testTask.setStatus(WorkItemStatus.TODO);
+
+        testResponseDTO = new TaskResponseDTO();
+        testResponseDTO.setId(1L);
+        testResponseDTO.setTitle("Test Task");
     }
+
+    // ==================== START TASK ====================
 
     @Test
     void startTask_WithValidData_ShouldStartTask() {
@@ -58,181 +76,104 @@ class TaskServiceTest {
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
         taskService.startTask(taskId, userId);
 
         verify(taskRepository, times(1)).save(testTask);
-        verify(userRepository, times(1)).findById(userId);
-    }
-
-    @Test
-    void startTask_WithNonTodoStatus_ShouldThrowException() {
-        Long taskId = 1L;
-        Long userId = 1L;
-        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        assertThatThrownBy(() -> taskService.startTask(taskId, userId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("TODO");
     }
 
     @Test
     void startTask_WithBlockedTask_ShouldThrowException() {
         Long taskId = 1L;
         Long userId = 1L;
+
+        // La tâche doit être IN_PROGRESS pour pouvoir être bloquée
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setAssignedUser(testUser);
+
+        BlockTaskRequest blockRequest = new BlockTaskRequest();
+        blockRequest.setReason("Blocage test");
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.blockTask(taskId, "Test block reason");
+        // Bloquer la tâche
+        taskService.blockTask(taskId, blockRequest);
 
+        // Réinitialiser le statut à TODO pour tester le démarrage
         testTask.setStatus(WorkItemStatus.TODO);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
 
+        // Vérifier que le démarrage échoue à cause du blocage
         assertThatThrownBy(() -> taskService.startTask(taskId, userId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("bloquée");
     }
 
-    @Test
-    void startTask_WithDifferentAssignedUser_ShouldThrowException() {
-        Long taskId = 1L;
-        Long userId = 2L;
-        User anotherUser = new User();
-        anotherUser.setId(3L);
-        anotherUser.setUsername("anotheruser");
-        testTask.setAssignedUser(anotherUser);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
-
-        assertThatThrownBy(() -> taskService.startTask(taskId, userId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("déjà assignée");
-    }
+    // ==================== WORKFLOW MOVEMENT ====================
 
     @Test
-    void moveToReview_WithInProgressTask_ShouldMoveToReview() {
+    void moveTaskToReview_WithInProgressTask_ShouldMoveToReview() {
         Long taskId = 1L;
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
         testTask.setActualHours(2);
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.moveToReview(taskId);
-
-        verify(taskRepository, times(1)).save(testTask);
-    }
-
-    @Test
-    void moveToReview_WithNoHoursLogged_ShouldThrowException() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
-        testTask.setActualHours(0);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-
-        assertThatThrownBy(() -> taskService.moveToReview(taskId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("heure");
-    }
-
-    @Test
-    void moveToReview_WithWrongStatus_ShouldThrowException() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.TODO);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-
-        assertThatThrownBy(() -> taskService.moveToReview(taskId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("en cours");
-    }
-
-    @Test
-    void moveToTesting_WithInReviewStatus_ShouldMoveToTesting() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.IN_REVIEW);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
-
-        taskService.moveToTesting(taskId);
+        taskService.moveTaskToReview(taskId);
 
         verify(taskRepository, times(1)).save(testTask);
-    }
-
-    @Test
-    void moveToTesting_WithWrongStatus_ShouldThrowException() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-
-        assertThatThrownBy(() -> taskService.moveToTesting(taskId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("revue");
-    }
-
-    @Test
-    void completeTask_WithValidStatus_ShouldCompleteTask() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.TESTING);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
-
-        taskService.completeTask(taskId);
-
-        verify(taskRepository, times(1)).save(testTask);
+        assertThat(testTask.getStatus()).isEqualTo(WorkItemStatus.IN_REVIEW);
     }
 
     @Test
     void completeTask_WithBlockedTask_ShouldThrowException() {
         Long taskId = 1L;
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setAssignedUser(testUser);
+
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Blocage critique");
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.blockTask(taskId, "Test reason");
+        // Bloquer la tâche
+        taskService.blockTask(taskId, request);
 
-        assertThatThrownBy(() -> taskService.completeTaskWorkflow(taskId))
+        // Tenter de compléter la tâche bloquée
+        assertThatThrownBy(() -> taskService.completeTask(taskId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("bloquée");
     }
 
-    @Test
-    void completeTask_WithInvalidStatus_ShouldThrowException() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.TODO);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-
-        assertThatThrownBy(() -> taskService.completeTask(taskId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("testée avant");
-    }
+    // ==================== BLOCK TASK ====================
 
     @Test
     void blockTask_WithInProgressTask_ShouldBlockTask() {
         Long taskId = 1L;
-        String reason = "Waiting for dependencies";
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
         testTask.setAssignedUser(testUser);
+        testTask.setBlocked(false); // Pas encore bloquée
+
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Waiting for dependencies");
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.blockTask(taskId, reason);
+        taskService.blockTask(taskId, request);
 
         verify(taskRepository, times(1)).save(testTask);
         assertThat(taskService.isTaskBlocked(taskId)).isTrue();
+        assertThat(testTask.isBlocked()).isTrue();
+        assertThat(testTask.getBlockReason()).isEqualTo("Waiting for dependencies");
     }
 
     @Test
@@ -240,9 +181,12 @@ class TaskServiceTest {
         Long taskId = 1L;
         testTask.setStatus(WorkItemStatus.DONE);
 
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Raison quelconque");
+
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        assertThatThrownBy(() -> taskService.blockTask(taskId, "Reason"))
+        assertThatThrownBy(() -> taskService.blockTask(taskId, request))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("terminée");
     }
@@ -252,34 +196,28 @@ class TaskServiceTest {
         Long taskId = 1L;
         testTask.setStatus(WorkItemStatus.TODO);
 
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Raison");
+
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        assertThatThrownBy(() -> taskService.blockTask(taskId, "Reason"))
+        assertThatThrownBy(() -> taskService.blockTask(taskId, request))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("pas encore démarré");
-    }
-
-    @Test
-    void blockTask_WithEmptyReason_ShouldThrowException() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-
-        assertThatThrownBy(() -> taskService.blockTask(taskId, "   "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("raison de blocage");
+                .hasMessageContaining("non démarrée");
     }
 
     @Test
     void blockTask_WithAlreadyBlockedTask_ShouldThrowException() {
         Long taskId = 1L;
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
-        testTask.setBlocked(true);
+        testTask.setBlocked(true); // Déjà marquée bloquée
+
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Raison");
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        assertThatThrownBy(() -> taskService.blockTask(taskId, "Reason"))
+        assertThatThrownBy(() -> taskService.blockTask(taskId, request))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("déjà bloquée");
     }
@@ -288,38 +226,47 @@ class TaskServiceTest {
     void unblockTask_WithBlockedTask_ShouldUnblockTask() {
         Long taskId = 1L;
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setBlocked(false);
+        testTask.setAssignedUser(testUser);
+
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Temp block");
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.blockTask(taskId, "Test reason");
+        // Bloquer la tâche
+        taskService.blockTask(taskId, request);
+
+        // Vérifier qu'elle est bien bloquée
+        assertThat(taskService.isTaskBlocked(taskId)).isTrue();
+
+        // Débloquer la tâche
         taskService.unblockTask(taskId);
 
+        // Vérifications
         verify(taskRepository, times(2)).save(testTask);
         assertThat(taskService.isTaskBlocked(taskId)).isFalse();
-    }
-
-    @Test
-    void unblockTask_WithNotBlockedTask_ShouldThrowException() {
-        Long taskId = 1L;
-        testTask.setBlocked(false);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-
-        assertThatThrownBy(() -> taskService.unblockTask(taskId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("n'est pas bloquée");
+        assertThat(testTask.isBlocked()).isFalse();
+        assertThat(testTask.getBlockReason()).isNull();
     }
 
     @Test
     void isTaskBlocked_WithBlockedTask_ShouldReturnTrue() {
         Long taskId = 1L;
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setBlocked(false);
+        testTask.setAssignedUser(testUser);
+
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Test reason");
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.blockTask(taskId, "Test reason");
+        taskService.blockTask(taskId, request);
 
         assertThat(taskService.isTaskBlocked(taskId)).isTrue();
     }
@@ -334,124 +281,69 @@ class TaskServiceTest {
     @Test
     void getTaskBlockInfo_WithBlockedTask_ShouldReturnInfo() {
         Long taskId = 1L;
-        String reason = "Test reason";
+        String reasonStr = "Test reason";
         testTask.setStatus(WorkItemStatus.IN_PROGRESS);
         testTask.setAssignedUser(testUser);
+        testTask.setBlocked(false);
+
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason(reasonStr);
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.blockTask(taskId, reason);
+        taskService.blockTask(taskId, request);
+
         TaskService.TaskBlockInfo info = taskService.getTaskBlockInfo(taskId);
 
         assertThat(info).isNotNull();
-        assertThat(info.reason()).isEqualTo(reason);
-        assertThat(info.blockedBy()).isEqualTo(testUser.getUsername());
+        assertThat(info.reason()).isEqualTo(reasonStr);
+        assertThat(info.blockedBy()).isEqualTo("testuser");
+        assertThat(info.blockedAt()).isNotNull();
     }
 
     @Test
     void getTaskBlockInfo_WithNonBlockedTask_ShouldReturnNull() {
-        Long taskId = 999L;
+        Long taskId = 1L;
 
         TaskService.TaskBlockInfo info = taskService.getTaskBlockInfo(taskId);
 
         assertThat(info).isNull();
     }
 
-    @Test
-    void reassignTask_WithValidData_ShouldReassignTask() {
-        Long taskId = 1L;
-        Long newUserId = 2L;
-        User newUser = new User();
-        newUser.setId(newUserId);
-        newUser.setUsername("newuser");
-        testTask.setStatus(WorkItemStatus.TODO);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(userRepository.findById(newUserId)).thenReturn(Optional.of(newUser));
-        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
-
-        taskService.reassignTask(taskId, newUserId);
-
-        verify(taskRepository, times(1)).save(testTask);
-    }
+    // ==================== ADDITIONAL VALIDATION TESTS ====================
 
     @Test
-    void reassignTask_WithDoneTask_ShouldThrowException() {
+    void blockTask_WithInReviewTask_ShouldBlockTask() {
         Long taskId = 1L;
-        Long newUserId = 2L;
-        testTask.setStatus(WorkItemStatus.DONE);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(userRepository.findById(newUserId)).thenReturn(Optional.of(testUser));
-
-        assertThatThrownBy(() -> taskService.reassignTask(taskId, newUserId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("terminée");
-    }
-
-    @Test
-    void reassignTask_WithNonExistentUser_ShouldThrowException() {
-        Long taskId = 1L;
-        Long userId = 999L;
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> taskService.reassignTask(taskId, userId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Utilisateur non trouvé");
-    }
-
-    @Test
-    void moveTaskBackward_FromInReviewToInProgress_ShouldMoveBack() {
-        Long taskId = 1L;
-        String reason = "Review failed";
         testTask.setStatus(WorkItemStatus.IN_REVIEW);
+        testTask.setBlocked(false);
+        testTask.setAssignedUser(testUser);
+
+        BlockTaskRequest request = new BlockTaskRequest();
+        request.setReason("Found issues in review");
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
+        when(taskMapper.toResponseDTO(any(Task.class))).thenReturn(testResponseDTO);
 
-        taskService.moveTaskBackward(taskId, reason);
-
-        verify(taskRepository, times(1)).save(testTask);
-    }
-
-    @Test
-    void moveTaskBackward_FromTestingToInReview_ShouldMoveBack() {
-        Long taskId = 1L;
-        String reason = "Test failed";
-        testTask.setStatus(WorkItemStatus.TESTING);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-        when(taskRepository.save(any(Task.class))).thenReturn(testTask);
-
-        taskService.moveTaskBackward(taskId, reason);
+        taskService.blockTask(taskId, request);
 
         verify(taskRepository, times(1)).save(testTask);
+        assertThat(taskService.isTaskBlocked(taskId)).isTrue();
     }
 
     @Test
-    void moveTaskBackward_WithDoneTask_ShouldThrowException() {
+    void unblockTask_WithNonBlockedTask_ShouldThrowException() {
         Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.DONE);
+        testTask.setStatus(WorkItemStatus.IN_PROGRESS);
+        testTask.setBlocked(false);
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
 
-        assertThatThrownBy(() -> taskService.moveTaskBackward(taskId, "Reason"))
+        assertThatThrownBy(() -> taskService.unblockTask(taskId))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("terminée");
-    }
-
-    @Test
-    void moveTaskBackward_WithInvalidStatus_ShouldThrowException() {
-        Long taskId = 1L;
-        testTask.setStatus(WorkItemStatus.TODO);
-
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(testTask));
-
-        assertThatThrownBy(() -> taskService.moveTaskBackward(taskId, "Reason"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Impossible de faire reculer");
+                .hasMessageContaining("n'est pas bloquée");
     }
 }

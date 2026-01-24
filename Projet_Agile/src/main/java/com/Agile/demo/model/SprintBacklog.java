@@ -1,9 +1,7 @@
 package com.Agile.demo.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.Agile.demo.planning.prioritization.IPrioritizationStrategy;
+import lombok.*;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -16,11 +14,15 @@ import java.util.List;
 @Getter
 @Setter
 @Table(name = "sprint_backlogs")
-public class SprintBacklog extends AbstractBacklog {
+@Builder
+public class SprintBacklog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String name;
 
     @Column(nullable = false)
     private Integer sprintNumber;
@@ -34,8 +36,8 @@ public class SprintBacklog extends AbstractBacklog {
     @Column(length = 500)
     private String goal;
 
-    @Column(name="capacity")
-    private Integer capacity=0;
+    @Column(name = "capacity")
+    private Integer capacity = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -61,7 +63,7 @@ public class SprintBacklog extends AbstractBacklog {
 
     // Constructeur personnalisé
     public SprintBacklog(String name, Integer sprintNumber, LocalDate startDate, LocalDate endDate, String goal) {
-        super(name, "Sprint Backlog for " + name);
+        this.name = name;
         this.sprintNumber = sprintNumber;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -83,12 +85,6 @@ public class SprintBacklog extends AbstractBacklog {
         userStory.setSprintBacklog(null);
     }
 
-    public void addTask(Task task) {
-        if (!tasks.contains(task)) {
-            tasks.add(task);
-            task.setSprintBacklog(this);
-        }
-    }
 
     public void removeTask(Task task) {
         tasks.remove(task);
@@ -174,48 +170,5 @@ public class SprintBacklog extends AbstractBacklog {
     public long getSprintDuration() {
         return ChronoUnit.DAYS.between(startDate, endDate);
     }
-
-    @Override
-    public void addItem(AbstractWorkItem item) {
-        if (item instanceof UserStory) {
-            addUserStory((UserStory) item);
-        } else if (item instanceof Task) {
-            addTask((Task) item);
-        } else {
-            throw new IllegalArgumentException("Type non supporté: " + item.getClass().getSimpleName());
-        }
-    }
-
-    /**
-     * Retire un item du sprint backlog
-     *
-     * @param item L'item à retirer
-     */
-
-    public void removeItem(AbstractWorkItem item) {
-        if (item instanceof UserStory) {
-            removeUserStory((UserStory) item);
-        } else if (item instanceof Task) {
-            removeTask((Task) item);
-        }
-    }
-
-    /**
-     * Retourne tous les items (UserStories + Tasks) du sprint
-     *
-     * @return Liste de tous les AbstractWorkItem
-     */
-    @Override
-    public List<AbstractWorkItem> getItems() {
-        List<AbstractWorkItem> items = new ArrayList<>();
-        items.addAll(userStories);
-        items.addAll(tasks);
-        return items;
-    }
-
-    public void setsprintNumber(long l) {
-        this.sprintNumber = Math.toIntExact(l);
-    }
-
 
 }

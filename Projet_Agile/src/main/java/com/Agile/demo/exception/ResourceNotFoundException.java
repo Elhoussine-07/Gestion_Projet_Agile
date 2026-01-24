@@ -1,4 +1,4 @@
-package com.Agile.demo.common.exception;
+package com.Agile.demo.exception;
 
 public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException(String message) {

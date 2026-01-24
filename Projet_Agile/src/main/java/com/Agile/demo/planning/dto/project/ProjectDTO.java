@@ -1,29 +1,23 @@
 package com.Agile.demo.planning.dto.project;
 
-import com.Agile.demo.model.Project;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProjectDTO {
     private Long id;
     private String name;
     private String description;
     private LocalDate startDate;
     private LocalDate endDate;
+    private Long productBacklogId;
     private int memberCount;
-
-    public static ProjectDTO fromEntity(Project project) {
-        return ProjectDTO.builder()
-                .id(project.getId())
-                .name(project.getName())
-                .description(project.getDescription())
-                .startDate(project.getStartDate())
-                .endDate(project.getEndDate())
-                .memberCount(project.getMembers() == null ? 0 : project.getMembers().size())
-                .build();
-    }
+    private int sprintCount;
 }
