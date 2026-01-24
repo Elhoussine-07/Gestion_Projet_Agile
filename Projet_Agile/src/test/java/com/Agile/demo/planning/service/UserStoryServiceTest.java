@@ -1,6 +1,6 @@
 package com.Agile.demo.planning.service;
 
-import com.Agile.demo.common.exception.ResourceNotFoundException;
+import com.Agile.demo.exception.ResourceNotFoundException;
 import com.Agile.demo.model.AcceptanceCriteria;
 import com.Agile.demo.model.ProductBacklog;
 import com.Agile.demo.model.UserStory;

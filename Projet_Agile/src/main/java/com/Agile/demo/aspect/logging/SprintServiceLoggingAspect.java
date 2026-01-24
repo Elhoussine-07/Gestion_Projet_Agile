@@ -75,7 +75,7 @@ public class SprintServiceLoggingAspect {
         String methodName = joinPoint.getSignature().getName();
         Object[] args = joinPoint.getArgs();
 
-        log.info("[SPRINT-SERVICE] [CRÉATION] 📅 Tentative de création de sprint");
+        log.info("[SPRINT-SERVICE] [CRÉATION]  Tentative de création de sprint");
         log.debug("[SPRINT-SERVICE] [CRÉATION] Paramètres: {}", Arrays.toString(args));
 
         try {
@@ -135,7 +135,7 @@ public class SprintServiceLoggingAspect {
     public Object logAroundGetSprint(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
 
-        log.debug("[SPRINT-SERVICE] [LECTURE] 📖 Récupération de données: {}", methodName);
+        log.debug("[SPRINT-SERVICE] [LECTURE]  Récupération de données: {}", methodName);
 
         try {
             Object result = joinPoint.proceed();

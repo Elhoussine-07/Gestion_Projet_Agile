@@ -1,4 +1,6 @@
-package com.Agile.demo.model;
+package com.Agile.demo.planning.prioritization;
+
+import com.Agile.demo.model.UserStory;
 
 import java.util.Comparator;
 import java.util.List;

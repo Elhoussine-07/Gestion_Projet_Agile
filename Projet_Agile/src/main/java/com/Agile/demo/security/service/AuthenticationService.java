@@ -1,6 +1,6 @@
 package com.Agile.demo.security.service;
 
-import com.Agile.demo.common.exception.BusinessException;
+import com.Agile.demo.exception.BusinessException;
 import com.Agile.demo.model.Role;
 import com.Agile.demo.model.User;
 import com.Agile.demo.execution.repositories.UserRepository;
@@ -49,7 +49,7 @@ public class AuthenticationService {
         // Générer token
         String jwt = jwtTokenProvider.generateToken(authentication);
 
-        // ✅ CHANGEMENT : Utiliser findByUsernameWithRoles
+        //  CHANGEMENT : Utiliser findByUsernameWithRoles
         User user = userRepository.findByUsernameWithRoles(request.getUsername())
                 .orElseThrow(() -> new BusinessException("User not found"));
 
@@ -105,7 +105,7 @@ public class AuthenticationService {
 
         User savedUser = userRepository.save(user);
 
-        // ✅ VÉRIFICATION : Recharger l'utilisateur avec les rôles
+        //  VÉRIFICATION : Recharger l'utilisateur avec les rôles
         User userWithRoles = userRepository.findByIdWithRoles(savedUser.getId())
                 .orElseThrow(() -> new BusinessException("Failed to load saved user"));
 
@@ -116,8 +116,6 @@ public class AuthenticationService {
         String jwt = jwtTokenProvider.generateTokenFromUsername(userWithRoles.getUsername());
 
         return AuthResponse.builder()
-                .token(jwt)
-                .type("Bearer")
                 .id(userWithRoles.getId())
                 .username(userWithRoles.getUsername())
                 .email(userWithRoles.getEmail())
@@ -132,7 +130,7 @@ public class AuthenticationService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
 
-        // ✅ CHANGEMENT : Utiliser findByUsernameWithRoles
+        //  CHANGEMENT : Utiliser findByUsernameWithRoles
         return userRepository.findByUsernameWithRoles(username)
                 .orElseThrow(() -> new BusinessException("Current user not found"));
     }

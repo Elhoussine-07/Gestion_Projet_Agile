@@ -80,7 +80,7 @@ public class TaskServiceLoggingAspect {
         String methodName = joinPoint.getSignature().getName();
         Object[] args = joinPoint.getArgs();
 
-        log.info("[TASK-SERVICE] [CRÉATION] 📝 Tentative de création de tâche");
+        log.info("[TASK-SERVICE] [CRÉATION]  Tentative de création de tâche");
         log.debug("[TASK-SERVICE] [CRÉATION] Paramètres: {}", Arrays.toString(args));
 
         try {
@@ -101,7 +101,7 @@ public class TaskServiceLoggingAspect {
         String methodName = joinPoint.getSignature().getName();
         Object[] args = joinPoint.getArgs();
 
-        log.info("[TASK-SERVICE] [MISE À JOUR] 🔄 Tentative de mise à jour de tâche");
+        log.info("[TASK-SERVICE] [MISE À JOUR]  Tentative de mise à jour de tâche");
         log.debug("[TASK-SERVICE] [MISE À JOUR] Paramètres: {}", Arrays.toString(args));
 
         try {
@@ -121,7 +121,7 @@ public class TaskServiceLoggingAspect {
         String methodName = joinPoint.getSignature().getName();
         Object[] args = joinPoint.getArgs();
 
-        log.warn("[TASK-SERVICE] [SUPPRESSION] 🗑️ Tentative de suppression de tâche");
+        log.warn("[TASK-SERVICE] [SUPPRESSION]  Tentative de suppression de tâche");
         log.debug("[TASK-SERVICE] [SUPPRESSION] Paramètres: {}", Arrays.toString(args));
 
         try {
@@ -140,7 +140,7 @@ public class TaskServiceLoggingAspect {
     public Object logAroundGetTask(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
 
-        log.debug("[TASK-SERVICE] [LECTURE] 📖 Récupération de données: {}", methodName);
+        log.debug("[TASK-SERVICE] [LECTURE]  Récupération de données: {}", methodName);
 
         try {
             Object result = joinPoint.proceed();

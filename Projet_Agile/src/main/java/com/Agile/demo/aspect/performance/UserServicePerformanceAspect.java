@@ -68,7 +68,7 @@ public class UserServicePerformanceAspect {
 
             updateUserPerformanceStats(fullMethodName, executionTimeMs, false);
 
-            log.warn("[USER-PERFORMANCE] ⚠️ Méthode {} a échoué après {} ms",
+            log.warn("[USER-PERFORMANCE]  Méthode {} a échoué après {} ms",
                     fullMethodName, executionTimeMs);
 
             throw throwable;
@@ -92,7 +92,7 @@ public class UserServicePerformanceAspect {
             long executionTimeMs = Duration.between(start, end).toMillis();
 
             if (executionTimeMs > SLOW_METHOD_THRESHOLD_MS) {
-                log.warn("[USER-TRANSACTION] ⚠️ Transaction lente détectée: {} - Durée: {} ms",
+                log.warn("[USER-TRANSACTION]  Transaction lente détectée: {} - Durée: {} ms",
                         fullMethodName, executionTimeMs);
             }
 
@@ -102,7 +102,7 @@ public class UserServicePerformanceAspect {
             Instant end = Instant.now();
             long executionTimeMs = Duration.between(start, end).toMillis();
 
-            log.error("[USER-TRANSACTION] ✗ Échec de la transaction: {} après {} ms",
+            log.error("[USER-TRANSACTION]  Échec de la transaction: {} après {} ms",
                     fullMethodName, executionTimeMs);
 
             throw throwable;
@@ -127,7 +127,7 @@ public class UserServicePerformanceAspect {
             log.info("[USER-CREATION-PERFORMANCE] Création d'utilisateur en {} ms", executionTimeMs);
 
             if (executionTimeMs > 1000) {
-                log.warn("[USER-CREATION-PERFORMANCE] ⚠️ Création lente: {} ms", executionTimeMs);
+                log.warn("[USER-CREATION-PERFORMANCE]  Création lente: {} ms", executionTimeMs);
             }
 
             return result;
@@ -136,7 +136,7 @@ public class UserServicePerformanceAspect {
             Instant end = Instant.now();
             long executionTimeMs = Duration.between(start, end).toMillis();
 
-            log.error("[USER-CREATION-PERFORMANCE] ✗ Échec de la création après {} ms", executionTimeMs);
+            log.error("[USER-CREATION-PERFORMANCE]  Échec de la création après {} ms", executionTimeMs);
 
             throw throwable;
         }
@@ -161,7 +161,7 @@ public class UserServicePerformanceAspect {
 
             // Les opérations de mot de passe ne doivent pas être trop lentes (hashing)
             if (executionTimeMs > 2000) {
-                log.warn("[USER-PASSWORD-PERFORMANCE] ⚠️ Opération de hashing très lente: {} ms",
+                log.warn("[USER-PASSWORD-PERFORMANCE]  Opération de hashing très lente: {} ms",
                         executionTimeMs);
             }
 
@@ -171,7 +171,7 @@ public class UserServicePerformanceAspect {
             Instant end = Instant.now();
             long executionTimeMs = Duration.between(start, end).toMillis();
 
-            log.error("[USER-PASSWORD-PERFORMANCE] ✗ Échec de l'opération après {} ms", executionTimeMs);
+            log.error("[USER-PASSWORD-PERFORMANCE]  Échec de l'opération après {} ms", executionTimeMs);
 
             throw throwable;
         }
@@ -197,7 +197,7 @@ public class UserServicePerformanceAspect {
             log.debug("[USER-SEARCH-PERFORMANCE] Recherche {} en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 800) {
-                log.warn("[USER-SEARCH-PERFORMANCE] ⚠️ Recherche lente: {} ({} ms)",
+                log.warn("[USER-SEARCH-PERFORMANCE]  Recherche lente: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -228,7 +228,7 @@ public class UserServicePerformanceAspect {
             log.debug("[USER-STATS-PERFORMANCE] Calcul de {} en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 500) {
-                log.warn("[USER-STATS-PERFORMANCE] ⚠️ Calcul de statistiques lent: {} ({} ms)",
+                log.warn("[USER-STATS-PERFORMANCE]  Calcul de statistiques lent: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -257,7 +257,7 @@ public class UserServicePerformanceAspect {
 
             // Les validations doivent être très rapides
             if (executionTimeMs > 200) {
-                log.warn("[USER-VALIDATION-PERFORMANCE] ⚠️ Validation lente: {} ({} ms)",
+                log.warn("[USER-VALIDATION-PERFORMANCE]  Validation lente: {} ({} ms)",
                         methodName, executionTimeMs);
             } else {
                 log.trace("[USER-VALIDATION-PERFORMANCE] Validation {} en {} ms",
@@ -290,7 +290,7 @@ public class UserServicePerformanceAspect {
             log.debug("[USER-ACTIVATION-PERFORMANCE] {} en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 500) {
-                log.warn("[USER-ACTIVATION-PERFORMANCE] ⚠️ Opération lente: {} ({} ms)",
+                log.warn("[USER-ACTIVATION-PERFORMANCE]  Opération lente: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -322,7 +322,7 @@ public class UserServicePerformanceAspect {
                     methodName, executionTimeMs);
 
             if (executionTimeMs > 1000) {
-                log.warn("[USER-WORKLOAD-PERFORMANCE] ⚠️ Calcul de charge lent: {} ({} ms)",
+                log.warn("[USER-WORKLOAD-PERFORMANCE]  Calcul de charge lent: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -346,13 +346,13 @@ public class UserServicePerformanceAspect {
      */
     private void logUserExecutionTime(String methodName, long executionTimeMs) {
         if (executionTimeMs >= VERY_SLOW_METHOD_THRESHOLD_MS) {
-            log.error("[USER-PERFORMANCE] 🔴 TRÈS LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
+            log.error("[USER-PERFORMANCE]  TRÈS LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
         } else if (executionTimeMs >= SLOW_METHOD_THRESHOLD_MS) {
-            log.warn("[USER-PERFORMANCE] 🟡 LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
+            log.warn("[USER-PERFORMANCE]  LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
         } else if (executionTimeMs >= 250) {
-            log.info("[USER-PERFORMANCE] 🟢 {} exécutée en {} ms", methodName, executionTimeMs);
+            log.info("[USER-PERFORMANCE]  {} exécutée en {} ms", methodName, executionTimeMs);
         } else {
-            log.debug("[USER-PERFORMANCE] ⚡ {} exécutée en {} ms (rapide)", methodName, executionTimeMs);
+            log.debug("[USER-PERFORMANCE]  {} exécutée en {} ms (rapide)", methodName, executionTimeMs);
         }
     }
 
