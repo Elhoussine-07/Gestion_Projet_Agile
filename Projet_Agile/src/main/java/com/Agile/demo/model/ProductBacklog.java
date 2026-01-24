@@ -1,7 +1,7 @@
 package com.Agile.demo.model;
 
+import com.Agile.demo.planning.prioritization.IPrioritizationStrategy;
 import jakarta.persistence.*;
-import lombok.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

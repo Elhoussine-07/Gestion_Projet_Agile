@@ -1,4 +1,4 @@
-package com.Agile.demo.common.exception;
+package com.Agile.demo.exception;
 
 public class BusinessException extends RuntimeException {
     public BusinessException(String message) {

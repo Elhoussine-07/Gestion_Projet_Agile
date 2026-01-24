@@ -1,7 +1,7 @@
 package com.Agile.demo.planning.service;
 
-import com.Agile.demo.common.planningAspect.LogExecutionTime;
-import com.Agile.demo.common.exception.ResourceNotFoundException;
+import com.Agile.demo.aspect.performance.LogExecutionTime;
+import com.Agile.demo.exception.ResourceNotFoundException;
 import com.Agile.demo.model.AcceptanceCriteria;
 import com.Agile.demo.model.ProductBacklog;
 import com.Agile.demo.model.UserStory;
@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor

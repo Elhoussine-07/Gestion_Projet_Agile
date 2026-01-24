@@ -1,4 +1,4 @@
-package com.Agile.demo.aspect;
+package com.Agile.demo.aspect.performance;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -92,7 +92,7 @@ public class SprintServicePerformanceAspect {
             long executionTimeMs = Duration.between(start, end).toMillis();
 
             if (executionTimeMs > SLOW_METHOD_THRESHOLD_MS) {
-                log.warn("[SPRINT-TRANSACTION] ⚠️ Transaction lente détectée: {} - Durée: {} ms",
+                log.warn("[SPRINT-TRANSACTION]  Transaction lente détectée: {} - Durée: {} ms",
                         fullMethodName, executionTimeMs);
             }
 
@@ -102,7 +102,7 @@ public class SprintServicePerformanceAspect {
             Instant end = Instant.now();
             long executionTimeMs = Duration.between(start, end).toMillis();
 
-            log.error("[SPRINT-TRANSACTION] ✗ Échec de la transaction: {} après {} ms",
+            log.error("[SPRINT-TRANSACTION]  Échec de la transaction: {} après {} ms",
                     fullMethodName, executionTimeMs);
 
             throw throwable;
@@ -129,7 +129,7 @@ public class SprintServicePerformanceAspect {
             log.info("[SPRINT-WORKFLOW-PERFORMANCE] {} exécuté en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 2000) {
-                log.warn("[SPRINT-WORKFLOW-PERFORMANCE] ⚠️ Opération de workflow lente: {} ({} ms)",
+                log.warn("[SPRINT-WORKFLOW-PERFORMANCE]  Opération de workflow lente: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -165,7 +165,7 @@ public class SprintServicePerformanceAspect {
             log.debug("[SPRINT-METRICS-PERFORMANCE] Calcul de {} en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 500) {
-                log.warn("[SPRINT-METRICS-PERFORMANCE] ⚠️ Calcul de métriques lent: {} ({} ms)",
+                log.warn("[SPRINT-METRICS-PERFORMANCE]  Calcul de métriques lent: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -189,13 +189,13 @@ public class SprintServicePerformanceAspect {
      */
     private void logSprintExecutionTime(String methodName, long executionTimeMs) {
         if (executionTimeMs >= VERY_SLOW_METHOD_THRESHOLD_MS) {
-            log.error("[SPRINT-PERFORMANCE] 🔴 TRÈS LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
+            log.error("[SPRINT-PERFORMANCE]  TRÈS LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
         } else if (executionTimeMs >= SLOW_METHOD_THRESHOLD_MS) {
-            log.warn("[SPRINT-PERFORMANCE] 🟡 LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
+            log.warn("[SPRINT-PERFORMANCE]  LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
         } else if (executionTimeMs >= 500) {
-            log.info("[SPRINT-PERFORMANCE] 🟢 {} exécutée en {} ms", methodName, executionTimeMs);
+            log.info("[SPRINT-PERFORMANCE]  {} exécutée en {} ms", methodName, executionTimeMs);
         } else {
-            log.debug("[SPRINT-PERFORMANCE] ⚡ {} exécutée en {} ms (rapide)", methodName, executionTimeMs);
+            log.debug("[SPRINT-PERFORMANCE]  {} exécutée en {} ms (rapide)", methodName, executionTimeMs);
         }
     }
 

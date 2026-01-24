@@ -3,7 +3,6 @@ package com.Agile.demo.model;
 public enum WorkItemStatus {
     
     // Backlog & Planning
-    BACKLOG("Backlog"),
     TODO("À faire"),
     READY("pret"),
 

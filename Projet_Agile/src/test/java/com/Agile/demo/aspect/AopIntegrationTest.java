@@ -1,4 +1,4 @@
-package com.Agile.demo.common.planningAspect;
+package com.Agile.demo.aspect;
 
 import com.Agile.demo.model.ProductBacklog;
 import com.Agile.demo.model.Project;

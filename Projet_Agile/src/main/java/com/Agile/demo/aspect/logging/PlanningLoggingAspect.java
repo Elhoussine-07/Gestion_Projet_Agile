@@ -1,4 +1,4 @@
-package com.Agile.demo.common.planningAspect;
+package com.Agile.demo.aspect.logging;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
@@ -13,7 +13,7 @@ import java.util.Arrays;
 @Aspect
 @Component
 @Slf4j
-public class LoggingAspect {
+public class PlanningLoggingAspect {
 
     /**
      * Pointcut pour tous les services du domaine planning

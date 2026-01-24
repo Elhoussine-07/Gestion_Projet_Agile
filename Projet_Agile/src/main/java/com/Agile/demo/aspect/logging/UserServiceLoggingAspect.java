@@ -110,7 +110,7 @@ public class UserServiceLoggingAspect {
 
         Long userId = args.length > 0 ? (Long) args[0] : null;
 
-        log.info("[USER-SERVICE] [MISE À JOUR] 🔄 Tentative de mise à jour utilisateur ID: {}", userId);
+        log.info("[USER-SERVICE] [MISE À JOUR]  Tentative de mise à jour utilisateur ID: {}", userId);
         log.debug("[USER-SERVICE] [MISE À JOUR] Paramètres (sanitizés): {}",
                 Arrays.toString(sanitizeArgs(args, methodName)));
 
@@ -133,7 +133,7 @@ public class UserServiceLoggingAspect {
 
         Long userId = args.length > 0 ? (Long) args[0] : null;
 
-        log.warn("[USER-SERVICE] [SUPPRESSION] 🗑️ Tentative de suppression utilisateur ID: {}", userId);
+        log.warn("[USER-SERVICE] [SUPPRESSION]  Tentative de suppression utilisateur ID: {}", userId);
 
         try {
             Object result = joinPoint.proceed();
@@ -151,7 +151,7 @@ public class UserServiceLoggingAspect {
     public Object logAroundGetUser(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
 
-        log.debug("[USER-SERVICE] [LECTURE] 📖 Récupération de données: {}", methodName);
+        log.debug("[USER-SERVICE] [LECTURE] Récupération de données: {}", methodName);
 
         try {
             Object result = joinPoint.proceed();
@@ -237,7 +237,7 @@ public class UserServiceLoggingAspect {
         String methodName = joinPoint.getSignature().getName();
         Object[] args = joinPoint.getArgs();
 
-        log.debug("[USER-SERVICE] [RECHERCHE] 🔍 Recherche d'utilisateurs: {}", methodName);
+        log.debug("[USER-SERVICE] [RECHERCHE]  Recherche d'utilisateurs: {}", methodName);
         log.debug("[USER-SERVICE] [RECHERCHE] Critères: {}", Arrays.toString(args));
 
         try {
@@ -257,7 +257,7 @@ public class UserServiceLoggingAspect {
     public Object logAroundUserValidation(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
 
-        log.trace("[USER-SERVICE] [VALIDATION] 🔎 Vérification: {}", methodName);
+        log.trace("[USER-SERVICE] [VALIDATION]  Vérification: {}", methodName);
 
         try {
             Object result = joinPoint.proceed();

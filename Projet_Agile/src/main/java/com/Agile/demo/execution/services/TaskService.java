@@ -270,7 +270,7 @@ public class TaskService {
                 task.getAssignedUser() != null ? task.getAssignedUser().getUsername() : "Système"
         );
         blockedTasks.put(taskId, blockInfo);
-
+        task.setStatus(WorkItemStatus.BLOCKED);
         task.setBlocked(true);
         task.setBlockReason(request.getReason());
 

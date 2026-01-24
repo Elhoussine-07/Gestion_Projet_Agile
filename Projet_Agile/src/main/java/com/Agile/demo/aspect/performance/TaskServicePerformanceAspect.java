@@ -68,7 +68,7 @@ public class TaskServicePerformanceAspect {
 
             updateTaskPerformanceStats(fullMethodName, executionTimeMs, false);
 
-            log.warn("[TASK-PERFORMANCE] ⚠️ Méthode {} a échoué après {} ms",
+            log.warn("[TASK-PERFORMANCE]  Méthode {} a échoué après {} ms",
                     fullMethodName, executionTimeMs);
 
             throw throwable;
@@ -92,7 +92,7 @@ public class TaskServicePerformanceAspect {
             long executionTimeMs = Duration.between(start, end).toMillis();
 
             if (executionTimeMs > SLOW_METHOD_THRESHOLD_MS) {
-                log.warn("[TASK-TRANSACTION] ⚠️ Transaction lente détectée: {} - Durée: {} ms",
+                log.warn("[TASK-TRANSACTION]  Transaction lente détectée: {} - Durée: {} ms",
                         fullMethodName, executionTimeMs);
             }
 
@@ -102,7 +102,7 @@ public class TaskServicePerformanceAspect {
             Instant end = Instant.now();
             long executionTimeMs = Duration.between(start, end).toMillis();
 
-            log.error("[TASK-TRANSACTION] ✗ Échec de la transaction: {} après {} ms",
+            log.error("[TASK-TRANSACTION]  Échec de la transaction: {} après {} ms",
                     fullMethodName, executionTimeMs);
 
             throw throwable;
@@ -129,7 +129,7 @@ public class TaskServicePerformanceAspect {
             log.info("[TASK-WORKFLOW-PERFORMANCE] {} exécuté en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 1500) {
-                log.warn("[TASK-WORKFLOW-PERFORMANCE] ⚠️ Opération de workflow lente: {} ({} ms)",
+                log.warn("[TASK-WORKFLOW-PERFORMANCE]  Opération de workflow lente: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -139,7 +139,7 @@ public class TaskServicePerformanceAspect {
             Instant end = Instant.now();
             long executionTimeMs = Duration.between(start, end).toMillis();
 
-            log.error("[TASK-WORKFLOW-PERFORMANCE] ✗ Échec de {} après {} ms",
+            log.error("[TASK-WORKFLOW-PERFORMANCE]  Échec de {} après {} ms",
                     methodName, executionTimeMs);
 
             throw throwable;
@@ -165,7 +165,7 @@ public class TaskServicePerformanceAspect {
             log.debug("[TASK-BLOCKING-PERFORMANCE] {} exécuté en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 500) {
-                log.warn("[TASK-BLOCKING-PERFORMANCE] ⚠️ Opération de blocage lente: {} ({} ms)",
+                log.warn("[TASK-BLOCKING-PERFORMANCE]  Opération de blocage lente: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -195,7 +195,7 @@ public class TaskServicePerformanceAspect {
             log.debug("[TASK-METRICS-PERFORMANCE] Calcul de {} en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 400) {
-                log.warn("[TASK-METRICS-PERFORMANCE] ⚠️ Calcul de métriques lent: {} ({} ms)",
+                log.warn("[TASK-METRICS-PERFORMANCE]  Calcul de métriques lent: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -226,7 +226,7 @@ public class TaskServicePerformanceAspect {
             log.debug("[TASK-QUERY-PERFORMANCE] Requête {} exécutée en {} ms", methodName, executionTimeMs);
 
             if (executionTimeMs > 1000) {
-                log.warn("[TASK-QUERY-PERFORMANCE] ⚠️ Requête lente détectée: {} ({} ms)",
+                log.warn("[TASK-QUERY-PERFORMANCE]  Requête lente détectée: {} ({} ms)",
                         methodName, executionTimeMs);
             }
 
@@ -250,13 +250,13 @@ public class TaskServicePerformanceAspect {
      */
     private void logTaskExecutionTime(String methodName, long executionTimeMs) {
         if (executionTimeMs >= VERY_SLOW_METHOD_THRESHOLD_MS) {
-            log.error("[TASK-PERFORMANCE] 🔴 TRÈS LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
+            log.error("[TASK-PERFORMANCE]  TRÈS LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
         } else if (executionTimeMs >= SLOW_METHOD_THRESHOLD_MS) {
-            log.warn("[TASK-PERFORMANCE] 🟡 LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
+            log.warn("[TASK-PERFORMANCE]  LENTE: {} - Durée: {} ms", methodName, executionTimeMs);
         } else if (executionTimeMs >= 300) {
-            log.info("[TASK-PERFORMANCE] 🟢 {} exécutée en {} ms", methodName, executionTimeMs);
+            log.info("[TASK-PERFORMANCE]  {} exécutée en {} ms", methodName, executionTimeMs);
         } else {
-            log.debug("[TASK-PERFORMANCE] ⚡ {} exécutée en {} ms (rapide)", methodName, executionTimeMs);
+            log.debug("[TASK-PERFORMANCE]  {} exécutée en {} ms (rapide)", methodName, executionTimeMs);
         }
     }
 

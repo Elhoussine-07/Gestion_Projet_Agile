@@ -1,4 +1,4 @@
-package com.Agile.demo.common.planningAspect;
+package com.Agile.demo.aspect.performance;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -15,12 +15,12 @@ import java.lang.reflect.Method;
 @Aspect
 @Component
 @Slf4j
-public class PerformanceAspect {
+public class PlanningPerformanceAspect {
 
     /**
      * Mesure le temps d'exécution des méthodes annotées @LogExecutionTime
      */
-    @Around("@annotation(com.Agile.demo.common.planningAspect.LogExecutionTime)")
+    @Around("@annotation(com.Agile.demo.aspect.performance.LogExecutionTime)")
     public Object logExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
         // Récupérer l'annotation et son seuil
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
