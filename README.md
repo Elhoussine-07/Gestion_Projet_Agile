@@ -26,9 +26,7 @@ Application Spring Boot pour gérer des projets selon la méthodologie Agile/Scr
 - [Tests](#tests)
 - [AOP et Aspects](#aop-et-aspects)
 - [Contributeurs](#contributeurs)
-- [Licence](#licence)
 - [Contributing](#contributing)
-- [Support](#support)
 
 ---
 
@@ -346,20 +344,9 @@ src/
 
 ## Modele de Donnees
 
-### Diagramme de Classes Simplifié
-```
-Project
-  ├─ ProductBacklog (1:1, composition)
-  │    ├─ Epic (1:N, agrégation)
-  │    │    └─ UserStory (1:N, agrégation)
-  │    └─ UserStory (1:N)
-  │         ├─ UserStoryDescription (1:1, composition, @Embeddable)
-  │         ├─ AcceptanceCriteria (1:1, composition, @Embeddable)
-  │         └─ Task (1:N, composition)
-  └─ SprintBacklog (1:N, composition)
-       ├─ UserStory (N:M, agrégation)
-       └─ Task (1:N, agrégation)
-```
+### Diagramme de Classes 
+![Diagramme de classes](docs/Class_Diagram_final.png)
+
 
 ### Entités Principales
 
@@ -514,16 +501,11 @@ public UserStory updateUserStory(...) {
 
 ## Contributeurs
 
- Mesad El Ayam Hafida — [GitHub](https://github.com/Hafidamesad) - Domaine Planning (Product Backlog, Epics, User Stories)
- Lahoussine EL HOSSNI— [GitHub](https://github.com/Elhoussine-07) Domaine Execution (Sprints, Tasks, Workflow)
+ Mesad El Ayam Hafida — [GitHub](https://github.com/Hafidamesad) - Domaine Planning (Product Backlog, Epics, User Stories, Priorisation)
+ 
+ Lahoussine EL HOSSNI— [GitHub](https://github.com/Elhoussine-07) - Domaine Execution (Sprints, Tasks, Workflow)
 
  Projet académique réalisé dans le cadre du module “Framework Avancés”
----
-
-## Licence
-
-Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
-
 ---
 
 ## Contributing
